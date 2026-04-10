@@ -6,15 +6,11 @@ Smart slice selection meets multimodal AI analysis. Dr.MRI.AI is a web-based DIC
 
 Developed by Rabimba.
 
-<p align="center">
-  <img src="docs/demo.gif" alt="Dr.MRI.AI demo" width="800" />
-</p>
-
-<p align="center">
-  <a href="https://youtu.be/fdDkg8ZleyA">Watch the full demo video</a> · <a href="https://dicomassist.dev">Live demo</a>
-</p>
-
 > ⚠️ **Educational and research use only.** Not a certified medical device. Not intended for clinical diagnosis or treatment decisions.
+
+## Motivation
+
+I started building Dr.MRI.AI after spending time around my partner&apos;s scans and realizing how hard it is to quickly focus on the few slices that actually matter in a large study. The goal was not to replace a radiologist, but to build a privacy-first research tool that can narrow hundreds of images into a smaller, explainable subset for review, discussion, and experimentation.
 
 ## How It Works
 
@@ -39,16 +35,10 @@ A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI give
 
 ### Live demo
 
-Visit [dicomassist.dev](https://dicomassist.dev)
 
 ### Run locally
 
-```bash
-git clone https://github.com/erketellal/DICOMassist.git
-cd DICOMassist
-npm install
-npm run dev
-```
+
 
 ### Configure AI analysis
 
@@ -67,13 +57,6 @@ If you want to override that, select **Gemma Web** in settings and point it at a
 
 The browser integration uses Google AI Edge MediaPipe/WebGPU runtime. The default browser URL uses a public mirror of a Gemma 3n E2B MediaPipe task bundle because the original Google Hugging Face repository is gated and the LiteRT web bundle path was not being accepted by the current browser runtime.
 
-### Sample data
-
-To try Dr.MRI.AI, you can use public DICOM datasets:
-
-- [DICOM Library](https://www.dicomlibrary.com) — free sample datasets
-- [The Cancer Imaging Archive](https://www.cancerimagingarchive.net) — research datasets
-- [OAI (Osteoarthritis Initiative)](https://nda.nih.gov/oai/) — knee MRI datasets
 
 ## Tech Stack
 
