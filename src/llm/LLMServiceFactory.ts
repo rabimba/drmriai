@@ -82,7 +82,7 @@ function parseSelectionPlan(raw: string): SelectionPlan {
   } catch {
     throw new Error(
       'The LLM did not return valid JSON. This can happen with smaller models. ' +
-      'Try a more specific clinical prompt (e.g., "Evaluate for lung nodules") or switch to Claude.',
+      'Try a more specific clinical prompt (e.g., "Evaluate for lung nodules") or switch to Gemini 2.5 Flash.',
     );
   }
 
@@ -116,20 +116,40 @@ function parseSelectionPlan(raw: string): SelectionPlan {
   return populateLegacyFields([selection], selection.rationale, 0);
 }
 
-// --- Claude Service ---
+function extractChatCompletionText(data: { choices?: Array<{ message?: { content?: unknown } }> }): string {
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
 
-class ClaudeService implements LLMService {
+  return content
+    .map((part) => {
+      if (typeof part === 'string') return part;
+      if (part && typeof part === 'object' && 'text' in part) {
+        return String((part as { text?: unknown }).text ?? '');
+      }
+      return '';
+    })
+    .join('\n')
+    .trim();
+}
+
+// --- Gemini Service ---
+
+class GeminiService implements LLMService {
   private apiKey: string;
-  private model = 'claude-sonnet-4-5-20250929';
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model: string) {
     this.apiKey = apiKey;
+    this.model = model;
   }
 
   async getSelectionPlan(metadata: StudyMetadata, clinicalHint: string, viewportContext?: ViewportContext): Promise<SelectionPlan> {
-    const response = await this.callClaude({
-      system: buildSelectionSystemPrompt(),
-      messages: [{ role: 'user', content: buildSelectionUserPrompt(metadata, clinicalHint, viewportContext) }],
+    const response = await this.callGemini({
+      messages: [
+        { role: 'system', content: buildSelectionSystemPrompt() },
+        { role: 'user', content: buildSelectionUserPrompt(metadata, clinicalHint, viewportContext) },
+      ],
       temperature: 0,
       maxTokens: 1024,
     });
@@ -147,31 +167,31 @@ class ClaudeService implements LLMService {
     const imageContents = await Promise.all(
       images.map(async (blob, i) => [
         {
-          type: 'image' as const,
-          source: {
-            type: 'base64' as const,
-            media_type: 'image/jpeg' as const,
-            data: await blobToBase64(blob),
-          },
-        },
-        {
           type: 'text' as const,
           text: sliceLabels[i] ?? `Image ${i + 1}`,
+        },
+        {
+          type: 'image_url' as const,
+          image_url: {
+            url: `data:image/jpeg;base64,${await blobToBase64(blob)}`,
+          },
         },
       ]),
     );
 
     const content = [
-      ...imageContents.flat(),
       {
         type: 'text' as const,
-        text: buildAnalysisUserPrompt(metadata, clinicalHint, plan, sliceLabels),
+        text: `${buildAnalysisUserPrompt(metadata, clinicalHint, plan, sliceLabels)}\n\nThe ordered images follow after their labels.`,
       },
+      ...imageContents.flat(),
     ];
 
-    return this.callClaude({
-      system: buildAnalysisSystemPrompt(surveyMode),
-      messages: [{ role: 'user', content }],
+    return this.callGemini({
+      messages: [
+        { role: 'system', content: buildAnalysisSystemPrompt(surveyMode) },
+        { role: 'user', content },
+      ],
       temperature: 0,
       maxTokens: 4096,
     });
@@ -183,46 +203,45 @@ class ClaudeService implements LLMService {
       content: msg.content,
     }));
 
-    return this.callClaude({
-      system: buildFollowUpSystemPrompt() + '\n\nStudy context: ' + metadata.studyDescription,
-      messages,
+    return this.callGemini({
+      messages: [
+        { role: 'system', content: buildFollowUpSystemPrompt() + '\n\nStudy context: ' + metadata.studyDescription },
+        ...messages,
+      ],
       temperature: 0,
       maxTokens: 4096,
     });
   }
 
-  private async callClaude(params: {
-    system: string;
+  private async callGemini(params: {
     messages: Array<{ role: string; content: unknown }>;
     temperature: number;
     maxTokens: number;
   }): Promise<string> {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: this.model,
         max_tokens: params.maxTokens,
         temperature: params.temperature,
-        system: params.system,
         messages: params.messages,
       }),
     });
 
     if (!res.ok) {
       const body = await res.text();
-      if (res.status === 401) throw new Error('Invalid API key. Check your Anthropic API key.');
-      throw new Error(`Anthropic API error (${res.status}): ${body}`);
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Invalid Gemini API key. Check your Google AI Studio key.');
+      }
+      throw new Error(`Gemini API error (${res.status}): ${body}`);
     }
 
     const data = await res.json();
-    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
-    return textBlock?.text ?? '';
+    return extractChatCompletionText(data);
   }
 }
 
@@ -457,12 +476,16 @@ class GemmaWebService implements LLMService {
 
 const DEFAULT_TEXT_MODEL = 'alibayram/medgemma:4b';
 const DEFAULT_VISION_MODEL = 'gemma3:4b';
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 
 export function createLLMService(config: ProviderConfig): LLMService {
-  if (config.provider === 'claude') {
-    const key = config.apiKey || import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!key) throw new Error('Anthropic API key is required. Enter it in Settings.');
-    return new ClaudeService(key);
+  if (config.provider === 'gemini') {
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    const key = config.apiKey || (isLocalhost ? import.meta.env.VITE_GEMINI_API_KEY : undefined);
+    if (!key) throw new Error('Gemini API key is required. Enter it in Settings.');
+    return new GeminiService(key, config.geminiModel || DEFAULT_GEMINI_MODEL);
   }
   if (config.provider === 'gemma-web') {
     return new GemmaWebService(

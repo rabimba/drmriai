@@ -66,6 +66,7 @@ const STATUS_LABELS: Record<ChatStatus, string> = {
 let llmFactoryPromise: Promise<typeof import('./LLMServiceFactory')> | null = null;
 let sliceSelectorPromise: Promise<typeof import('../filtering/SliceSelector')> | null = null;
 let sliceExporterPromise: Promise<typeof import('../filtering/SliceExporter')> | null = null;
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 
 function loadLlmFactory() {
   if (!llmFactoryPromise) {
@@ -126,8 +127,8 @@ function getProviderLabels(providerConfig: ProviderConfig): { textModel: string;
   }
 
   return {
-    textModel: 'claude',
-    visionModel: 'claude',
+    textModel: providerConfig.geminiModel || DEFAULT_GEMINI_MODEL,
+    visionModel: providerConfig.geminiModel || DEFAULT_GEMINI_MODEL,
   };
 }
 

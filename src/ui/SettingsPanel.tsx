@@ -7,7 +7,7 @@ import {
   DEFAULT_GEMMA_WEB_WASM_ROOT,
   hasWebGpuSupport,
 } from '../llm/gemmaWebConfig';
-import type { OllamaModelInfo } from '../llm/LLMServiceFactory';
+import { DEFAULT_GEMINI_MODEL, type OllamaModelInfo } from '../llm/LLMServiceFactory';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -110,6 +110,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
   const isInstalled = (name: string) =>
     installedModels.some((m) => m.name === name || m.name === name.replace(':latest', '') || m.name + ':latest' === name);
 
+  const geminiModel = config.geminiModel || DEFAULT_GEMINI_MODEL;
   const textModel = config.ollamaTextModel || 'alibayram/medgemma:4b';
   const visionModel = config.ollamaVisionModel || 'llava:7b';
 
@@ -142,12 +143,12 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                 Ollama (Default)
               </button>
               <button
-                onClick={() => setProvider('claude')}
+                onClick={() => setProvider('gemini')}
                 className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  config.provider === 'claude' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
+                  config.provider === 'gemini' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
-                Anthropic API
+                Gemini API
               </button>
               <button
                 onClick={() => setProvider('gemma-web')}
@@ -254,21 +255,37 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
             </>
           )}
 
-          {/* Claude fields */}
-          {config.provider === 'claude' && (
-            <div>
-              <label className="text-xs text-neutral-400 block mb-1.5">Anthropic API Key</label>
-              <input
-                type="password"
-                value={config.apiKey ?? ''}
-                onChange={(e) => onConfigChange({ ...config, apiKey: e.target.value })}
-                placeholder="sk-ant-..."
-                className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
-              />
-              <p className="text-[10px] text-neutral-500 mt-1">
-                Stored in localStorage only. Never sent to our servers.
-              </p>
-            </div>
+          {/* Gemini fields */}
+          {config.provider === 'gemini' && (
+            <>
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">Gemini API Key</label>
+                <input
+                  type="password"
+                  value={config.apiKey ?? ''}
+                  onChange={(e) => onConfigChange({ ...config, apiKey: e.target.value })}
+                  placeholder="AIza..."
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Stored in localStorage only. For hosted demos, use a runtime bring-your-own-key flow instead of bundling a Gemini key into the static build.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">Gemini Model</label>
+                <input
+                  type="text"
+                  value={geminiModel}
+                  onChange={(e) => onConfigChange({ ...config, geminiModel: e.target.value })}
+                  placeholder={DEFAULT_GEMINI_MODEL}
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Default is the stable multimodal model `gemini-2.5-flash`.
+                </p>
+              </div>
+            </>
           )}
 
           {/* Ollama fields */}

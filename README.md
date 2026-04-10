@@ -33,7 +33,7 @@ A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI give
 - **Privacy-first** — DICOM files are processed entirely in your browser. No data is uploaded to any server. Image data is only sent to the LLM provider you configure when you run an analysis, and Gemma Web keeps both planning and analysis on-device
 - **Multiple layouts** — 1×1, 1×2, 2×1, 2×2 grid, and MPR (axial/sagittal/coronal)
 - **Standard tools** — Window/Level, Zoom, Pan, Length measurement, Rotate, Flip, Invert, Cine playback
-- **Provider-agnostic** — Works with Anthropic API, local models via Ollama, or browser-local Gemma Web models
+- **Provider-agnostic** — Works with Gemini API, local models via Ollama, or browser-local Gemma Web models
 
 ## Getting Started
 
@@ -53,10 +53,10 @@ npm run dev
 ### Configure AI analysis
 
 1. Click the ⚙ Settings icon in the toolbar
-2. Keep **Ollama** as the default local workflow, or switch to **Anthropic API** and enter your API key ([get one here](https://console.anthropic.com))
+2. Keep **Ollama** as the default local workflow, or switch to **Gemini API** and enter your API key ([create one in Google AI Studio](https://aistudio.google.com/app/apikey))
 3. Load DICOM files, open the AI workspace, and describe what to evaluate
 
-For local models, install [Ollama](https://ollama.ai), pull a model (`ollama pull gemma3:4b`), and select Ollama in settings. Note: local models produce significantly lower quality results for medical image analysis compared to Claude.
+For local models, install [Ollama](https://ollama.ai), pull a model (`ollama pull gemma3:4b`), and select Ollama in settings. Note: local models usually produce lower quality results for medical image analysis than the hosted Gemini path.
 
 The default provider is **Ollama** for a more stable local workflow. Gemma Web remains available as an experimental browser path in settings.
 
@@ -77,11 +77,51 @@ To try Dr.MRI.AI, you can use public DICOM datasets:
 
 ## Tech Stack
 
-- **React 18** + TypeScript + Vite
+- **React 19** + TypeScript + Vite
 - **Cornerstone3D v4** — medical image rendering, viewport management, tools
-- **Anthropic API** — optional hosted multimodal LLM for image analysis
+- **Gemini API** — optional hosted multimodal LLM for image analysis
 - **Ollama** — optional local model support
 - **Gemma Web + MediaPipe/WebGPU** — optional browser-local on-device inference
+
+## Deployment
+
+This app is deployable as a static site on free tiers because there is no required backend. The important constraints are:
+
+- Use Node 20+ for builds. `package.json` now declares that explicitly.
+- Use the full `npm run build` command so TypeScript is checked before deploy.
+- Do not put a production Gemini API key into `VITE_*` environment variables on a static host. Those values are bundled into client JavaScript. For hosted demos, keep the current runtime BYOK flow in the settings panel.
+- Ollama only works for the person running Ollama locally. If you deploy to Vercel or `*.pages.dev`, public visitors will not be able to use your local Ollama instance.
+- Gemma Web stays fully static, but first load is heavier because the browser downloads the task bundle and WebGPU runtime.
+
+### Vercel
+
+Vercel has first-class Vite support. The current Vercel docs show Vite as a supported frontend framework: [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite).
+
+1. Push the repo to GitHub.
+2. Import the repo in Vercel.
+3. Keep the output directory as `dist`.
+4. Build with `npm run build`.
+5. Deploy.
+
+### Cloudflare Pages
+
+Cloudflare Pages also supports this setup directly. Cloudflare’s build configuration docs list `React (Vite)` with `npm run build` as the build command and `dist` as the build directory: [Cloudflare Pages build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/).
+
+1. Push the repo to GitHub.
+2. Create a new Pages project from that repo.
+3. Set the production branch to `main`.
+4. Set the build command to `npm run build`.
+5. Set the build output directory to `dist`.
+6. Deploy.
+
+### Gemini Notes
+
+Google’s Gemini docs show an OpenAI-compatible chat completions endpoint at `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, which is what the hosted provider now uses. The current stable production naming guidance recommends specific stable model strings such as `gemini-2.5-flash`: [Gemini models](https://ai.google.dev/gemini-api/docs/models), [OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai).
+
+Google also explicitly warns not to expose Gemini API keys client-side in production web apps: [Gemini API key guidance](https://ai.google.dev/gemini-api/docs/api-key). For this project, that means either:
+
+- Keep the static deployment and require each user to paste their own Gemini key at runtime.
+- Add a small serverless proxy later if you want a single managed project key.
 
 ## Architecture
 

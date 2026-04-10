@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "description": "Dr.MRI.AI: AI-first DICOM viewer with guided slice selection, evidence export, and follow-up analysis",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

@@ -41,6 +41,7 @@ const DEFAULT_GEMMA_WEB_FALLBACK_PATHS = Array.from(
 function getDefaultProviderConfig(): ProviderConfig {
   return {
     provider: 'ollama',
+    geminiModel: 'gemini-2.5-flash',
     ollamaTextModel: OLLAMA_DEFAULT_TEXT_MODEL,
     ollamaVisionModel: OLLAMA_DEFAULT_VISION_MODEL,
     ollamaUrl: OLLAMA_DEFAULT_URL,
@@ -55,10 +56,14 @@ function loadConfig(): ProviderConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved) as ProviderConfig;
-      const merged = { ...defaults, ...parsed };
+      const parsed = JSON.parse(saved) as Record<string, unknown>;
+      const merged: ProviderConfig = { ...defaults, ...(parsed as Partial<ProviderConfig>) };
+      const savedProvider = typeof parsed.provider === 'string' ? parsed.provider : undefined;
+      if (savedProvider === 'claude') {
+        merged.provider = 'gemini';
+      }
       const shouldMigrateGemmaDefaultToOllama =
-        parsed.provider === 'gemma-web' &&
+        savedProvider === 'gemma-web' &&
         DEFAULT_GEMMA_WEB_FALLBACK_PATHS.includes(merged.gemmaWebTextModelPath || DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH) &&
         DEFAULT_GEMMA_WEB_FALLBACK_PATHS.includes(merged.gemmaWebVisionModelPath || DEFAULT_GEMMA_WEB_VISION_MODEL_PATH);
 
@@ -132,7 +137,7 @@ function formatFileTimestamp(timestamp: number): string {
 function getProviderLabel(config: ProviderConfig): string {
   if (config.provider === 'gemma-web') return 'Gemma Web';
   if (config.provider === 'ollama') return 'Ollama';
-  return 'Anthropic API';
+  return 'Gemini API';
 }
 
 function buildAnalysisRecord({

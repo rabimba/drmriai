@@ -71,11 +71,12 @@ export interface AnalysisEvidenceBundle {
   images: AnalysisEvidenceImage[];
 }
 
-export type ProviderType = 'claude' | 'ollama' | 'gemma-web';
+export type ProviderType = 'gemini' | 'ollama' | 'gemma-web';
 
 export interface ProviderConfig {
   provider: ProviderType;
-  apiKey?: string;           // Claude only
+  apiKey?: string;           // Gemini only
+  geminiModel?: string;      // Gemini model for hosted text + vision analysis
   ollamaTextModel?: string;  // Ollama model for Call 1 (text-only planning)
   ollamaVisionModel?: string; // Ollama model for Call 2 (multimodal analysis)
   ollamaUrl?: string;        // Ollama base URL override
