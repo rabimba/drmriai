@@ -1,0 +1,118 @@
+# Dr.MRI.AI
+
+**AI-Powered Medical Image Analysis**
+
+Smart slice selection meets multimodal AI analysis. Dr.MRI.AI is a web-based DICOM viewer that intelligently selects the right images before sending them to an LLM for analysis — because the hard part isn't the AI, it's knowing what to send it.
+
+Developed by Rabimba.
+
+<p align="center">
+  <img src="docs/demo.gif" alt="Dr.MRI.AI demo" width="800" />
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/fdDkg8ZleyA">Watch the full demo video</a> · <a href="https://dicomassist.dev">Live demo</a>
+</p>
+
+> ⚠️ **Educational and research use only.** Not a certified medical device. Not intended for clinical diagnosis or treatment decisions.
+
+## How It Works
+
+A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI gives garbage results. Dr.MRI.AI uses a **two-call architecture**:
+
+1. **Load** — Drag and drop DICOM files or folders into the browser
+2. **Analyze** — Describe what to evaluate (e.g., "evaluate for ACL tear grade")
+3. **Plan** — The LLM analyzes study metadata and selects the optimal series, slice range, and windowing based on the clinical question
+4. **Review** — Only the focused slices are sent for multimodal analysis, producing findings with interactive slice references you can click to navigate
+
+## Key Features
+
+- **Smart slice filtering** — AI reasons about which series orientation, weighting, and slice range are diagnostically relevant, then samples only those slices
+- **Multi-series support** — Automatic scout detection, series metadata extraction (orientation, MRI weighting, resolution)
+- **Interactive results** — Clickable slice references in findings jump the viewer to the referenced image
+- **Privacy-first** — DICOM files are processed entirely in your browser. No data is uploaded to any server. Image data is only sent to the LLM provider you configure when you run an analysis, and Gemma Web keeps both planning and analysis on-device
+- **Multiple layouts** — 1×1, 1×2, 2×1, 2×2 grid, and MPR (axial/sagittal/coronal)
+- **Standard tools** — Window/Level, Zoom, Pan, Length measurement, Rotate, Flip, Invert, Cine playback
+- **Provider-agnostic** — Works with Anthropic API, local models via Ollama, or browser-local Gemma Web models
+
+## Getting Started
+
+### Live demo
+
+Visit [dicomassist.dev](https://dicomassist.dev)
+
+### Run locally
+
+```bash
+git clone https://github.com/erketellal/DICOMassist.git
+cd DICOMassist
+npm install
+npm run dev
+```
+
+### Configure AI analysis
+
+1. Click the ⚙ Settings icon in the toolbar
+2. Keep **Ollama** as the default local workflow, or switch to **Anthropic API** and enter your API key ([get one here](https://console.anthropic.com))
+3. Load DICOM files, open the AI workspace, and describe what to evaluate
+
+For local models, install [Ollama](https://ollama.ai), pull a model (`ollama pull gemma3:4b`), and select Ollama in settings. Note: local models produce significantly lower quality results for medical image analysis compared to Claude.
+
+The default provider is **Ollama** for a more stable local workflow. Gemma Web remains available as an experimental browser path in settings.
+
+If you want to override that, select **Gemma Web** in settings and point it at a different web-converted Gemma model under `public/models/` or a remote URL:
+
+- **Text planning / follow-ups**: the hosted `gemma-3n-E2B-it-int4.task` bundle is used by default
+- **Image analysis**: the same hosted Gemma 3n task bundle is used by default
+
+The browser integration uses Google AI Edge MediaPipe/WebGPU runtime. The default browser URL uses a public mirror of a Gemma 3n E2B MediaPipe task bundle because the original Google Hugging Face repository is gated and the LiteRT web bundle path was not being accepted by the current browser runtime.
+
+### Sample data
+
+To try Dr.MRI.AI, you can use public DICOM datasets:
+
+- [DICOM Library](https://www.dicomlibrary.com) — free sample datasets
+- [The Cancer Imaging Archive](https://www.cancerimagingarchive.net) — research datasets
+- [OAI (Osteoarthritis Initiative)](https://nda.nih.gov/oai/) — knee MRI datasets
+
+## Tech Stack
+
+- **React 18** + TypeScript + Vite
+- **Cornerstone3D v4** — medical image rendering, viewport management, tools
+- **Anthropic API** — optional hosted multimodal LLM for image analysis
+- **Ollama** — optional local model support
+- **Gemma Web + MediaPipe/WebGPU** — optional browser-local on-device inference
+
+## Architecture
+
+```
+User prompt ("evaluate ACL tear")
+        │
+        ▼
+   ┌─────────┐     Study metadata
+   │  Call 1  │◄─── (series list, orientations,
+   │  (text)  │     slice counts, resolutions)
+   └────┬────┘
+        │ Selection plan:
+        │ Series #8 sagittal PD-FS, slices 13-27
+        ▼
+   ┌──────────┐     Focused JPEG exports
+   │  Call 2   │◄─── (15 slices, windowed,
+   │ (vision)  │     with slice labels)
+   └────┬─────┘
+        │
+        ▼
+   Findings with slice references
+```
+
+## Contributing
+
+Contributions are welcome! This is an open-source project — feel free to open issues, submit PRs, or suggest features.
+
+## License
+
+MIT
+
+---
+
+*Dr.MRI.AI is an educational tool built to demonstrate intelligent data preparation for AI-powered medical image analysis. It is not a certified medical device and must not be used for clinical decision-making.*

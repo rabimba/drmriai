@@ -1,0 +1,1 @@
+import{n as e,o as a,q as i,r as n,t}from"./cornerstone-vendor-CGcQUznK.js";import"./react-vendor-bT5_eilT.js";let r=!1;async function m(){r||(await e(),await a(),i({maxWebWorkers:navigator.hardwareConcurrency||1}),n(t),r=!0)}export{m as initCornerstone};
