@@ -71,7 +71,7 @@ export interface AnalysisEvidenceBundle {
   images: AnalysisEvidenceImage[];
 }
 
-export type ProviderType = 'gemini' | 'ollama' | 'gemma-web';
+export type ProviderType = 'gemini' | 'ollama' | 'gemma-web' | 'gemma-transformers';
 
 export interface ProviderConfig {
   provider: ProviderType;
@@ -83,6 +83,10 @@ export interface ProviderConfig {
   gemmaWebTextModelPath?: string;   // Browser-local text model path/URL
   gemmaWebVisionModelPath?: string; // Browser-local multimodal model path/URL
   gemmaWebWasmRoot?: string;        // MediaPipe WebAssembly assets root
+  gemmaTransformersModelId?: string; // Transformers.js model repo or local model path
+  gemmaTransformersDtype?: string;   // Transformers.js dtype, e.g. q4f16
+  gemmaTransformersMaxImages?: number; // Browser-local image budget
+  gemmaTransformersImageTokenBudget?: number; // Gemma 4 image soft-token budget
 }
 
 export interface ViewportContext {

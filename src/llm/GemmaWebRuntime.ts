@@ -1,5 +1,5 @@
 const MEDIAPIPE_GENAI_MODULE_URL =
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@latest/+esm';
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.27/+esm';
 
 import {
   DEFAULT_GEMMA_WEB_MAX_IMAGES,

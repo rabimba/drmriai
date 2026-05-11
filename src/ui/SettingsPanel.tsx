@@ -7,6 +7,14 @@ import {
   DEFAULT_GEMMA_WEB_WASM_ROOT,
   hasWebGpuSupport,
 } from '../llm/gemmaWebConfig';
+import {
+  DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
+  DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET,
+  DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
+  DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
+  GEMMA_TRANSFORMERS_DTYPES,
+  GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGETS,
+} from '../llm/gemmaTransformersConfig';
 import { DEFAULT_GEMINI_MODEL, type OllamaModelInfo } from '../llm/LLMServiceFactory';
 
 interface SettingsPanelProps {
@@ -25,6 +33,7 @@ interface RecommendedModel {
 
 const RECOMMENDED_MODELS: RecommendedModel[] = [
   { name: 'alibayram/medgemma:4b', label: 'MedGemma 4B', desc: 'Medical text planning, no vision (2.5GB)', role: 'text' },
+  { name: 'gemma4:latest', label: 'Gemma 4', desc: 'Installed vision-capable Gemma model', role: 'both' },
   { name: 'gemma3:4b', label: 'Gemma 3 4B', desc: 'Official Google, text + vision (3.3GB)', role: 'both' },
   { name: 'llava:7b', label: 'LLaVA 7B', desc: 'Proven vision support (4.7GB)', role: 'vision' },
   { name: 'llama3.2:latest', label: 'Llama 3.2 3B', desc: 'Fast general text (2GB)', role: 'text' },
@@ -43,6 +52,10 @@ function loadOllamaFactory() {
     ollamaFactoryPromise = import('../llm/LLMServiceFactory');
   }
   return ollamaFactoryPromise;
+}
+
+function modelSupportsVision(model: OllamaModelInfo | undefined): boolean {
+  return !!model?.capabilities?.includes('vision');
 }
 
 export default function SettingsPanel({ open, onClose, config, onConfigChange }: SettingsPanelProps) {
@@ -86,6 +99,16 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
     }
   }, [open, config.provider, refreshModels]);
 
+  useEffect(() => {
+    if (!open || config.provider !== 'ollama' || ollamaStatus !== 'online') return;
+    const selectedVisionModel = config.ollamaVisionModel || 'gemma4:latest';
+    const selected = installedModels.find((m) => m.name === selectedVisionModel);
+    const firstVisionModel = installedModels.find(modelSupportsVision);
+    if (firstVisionModel && !modelSupportsVision(selected)) {
+      onConfigChange({ ...config, ollamaVisionModel: firstVisionModel.name });
+    }
+  }, [open, config, ollamaStatus, installedModels, onConfigChange]);
+
   const handlePull = async (modelName: string) => {
     const { pullOllamaModel } = await loadOllamaFactory();
     setPulling({ model: modelName, status: 'Starting...', percent: null });
@@ -112,7 +135,19 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
 
   const geminiModel = config.geminiModel || DEFAULT_GEMINI_MODEL;
   const textModel = config.ollamaTextModel || 'alibayram/medgemma:4b';
-  const visionModel = config.ollamaVisionModel || 'llava:7b';
+  const visionModel = config.ollamaVisionModel || 'gemma4:latest';
+  const selectedVisionModelInfo = installedModels.find((m) => m.name === visionModel);
+  const visionModels = installedModels.filter(modelSupportsVision);
+  const gemmaTransformersModelId = config.gemmaTransformersModelId || DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID;
+  const gemmaTransformersDtype = config.gemmaTransformersDtype || DEFAULT_GEMMA_TRANSFORMERS_DTYPE;
+  const gemmaTransformersMaxImages = Math.max(
+    1,
+    Math.min(DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES, config.gemmaTransformersMaxImages ?? DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES),
+  );
+  const gemmaTransformersImageTokenBudget = Math.max(
+    70,
+    Math.min(280, config.gemmaTransformersImageTokenBudget ?? DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET),
+  );
 
   return (
     <div className="fixed inset-0 z-40" onClick={onClose}>
@@ -133,10 +168,10 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
           {/* Provider Toggle */}
           <div>
             <label className="text-xs text-neutral-400 block mb-1.5">Provider</label>
-            <div className="flex bg-neutral-900 rounded-lg p-0.5">
+            <div className="grid grid-cols-2 gap-0.5 bg-neutral-900 rounded-lg p-0.5">
               <button
                 onClick={() => setProvider('ollama')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
                   config.provider === 'ollama' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
@@ -144,15 +179,23 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
               </button>
               <button
                 onClick={() => setProvider('gemini')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
                   config.provider === 'gemini' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
                 Gemini API
               </button>
               <button
+                onClick={() => setProvider('gemma-transformers')}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  config.provider === 'gemma-transformers' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                Gemma 4 Browser
+              </button>
+              <button
                 onClick={() => setProvider('gemma-web')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
                   config.provider === 'gemma-web' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
@@ -160,6 +203,98 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
               </button>
             </div>
           </div>
+
+          {/* Gemma 4 Transformers.js fields */}
+          {config.provider === 'gemma-transformers' && (
+            <>
+              <div className="flex items-center gap-2 text-xs">
+                {webGpuAvailable ? (
+                  <>
+                    <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                    <span className="text-green-400">WebGPU available</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-red-400">WebGPU unavailable</span>
+                  </>
+                )}
+                <span className="text-neutral-500 ml-auto">Runs fully in the browser</span>
+              </div>
+
+              <div className="bg-neutral-900 rounded-lg px-3 py-3 space-y-2">
+                <p className="text-xs text-neutral-300">
+                  Uses Transformers.js with Gemma 4 E2B ONNX on WebGPU.
+                </p>
+                <p className="text-[10px] text-neutral-500">
+                  First run downloads a large model into the browser cache. Close GPU-heavy tabs if initialization fails, or reduce the image budget/token budget below.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">Model ID</label>
+                <input
+                  type="text"
+                  value={gemmaTransformersModelId}
+                  onChange={(e) => onConfigChange({ ...config, gemmaTransformersModelId: e.target.value })}
+                  placeholder={DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID}
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Default: `onnx-community/gemma-4-E2B-it-ONNX`.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-neutral-400 block mb-1.5">Dtype</label>
+                  <select
+                    value={gemmaTransformersDtype}
+                    onChange={(e) => onConfigChange({ ...config, gemmaTransformersDtype: e.target.value })}
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 outline-none focus:border-blue-500"
+                  >
+                    {GEMMA_TRANSFORMERS_DTYPES.map((dtype) => (
+                      <option key={dtype} value={dtype}>{dtype}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-neutral-400 block mb-1.5">Max Images <span className="text-neutral-600">(chunked)</span></label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES}
+                    value={gemmaTransformersMaxImages}
+                    onChange={(e) => onConfigChange({
+                      ...config,
+                      gemmaTransformersMaxImages: Math.max(
+                        1,
+                        Math.min(DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES, Number(e.target.value) || DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES),
+                      ),
+                    })}
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">Image Token Budget</label>
+                <select
+                  value={gemmaTransformersImageTokenBudget}
+                  onChange={(e) => onConfigChange({ ...config, gemmaTransformersImageTokenBudget: Number(e.target.value) })}
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 outline-none focus:border-blue-500"
+                >
+                  {GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGETS.map((budget) => (
+                    <option key={budget} value={budget}>{budget} tokens/image</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Browser Gemma analyzes images in small batches and then synthesizes a final answer. Use 70 or 140 if ONNX reports tensor-size limits.
+                </p>
+              </div>
+            </>
+          )}
 
           {/* Gemma Web fields */}
           {config.provider === 'gemma-web' && (
@@ -366,9 +501,16 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                     </label>
                     <ModelDropdown
                       value={visionModel}
-                      models={installedModels}
+                      models={visionModels}
                       onChange={(m) => onConfigChange({ ...config, ollamaVisionModel: m })}
+                      emptyLabel="No installed vision-capable models"
                     />
+                    {ollamaStatus === 'online' && !modelSupportsVision(selectedVisionModelInfo) && (
+                      <p className="mt-1.5 text-[10px] text-amber-300/80">
+                        The selected vision model is not installed or does not advertise Ollama vision support.
+                        Use Gemma 4, Gemma 3, or LLaVA for image analysis.
+                      </p>
+                    )}
                   </div>
 
                   {/* Recommended Models */}
@@ -558,10 +700,12 @@ function ModelDropdown({
   value,
   models,
   onChange,
+  emptyLabel = 'No models installed',
 }: {
   value: string;
   models: OllamaModelInfo[];
   onChange: (model: string) => void;
+  emptyLabel?: string;
 }) {
   const [dropOpen, setDropOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -599,12 +743,17 @@ function ModelDropdown({
                 value === m.name ? 'bg-blue-600/20 text-blue-400' : 'text-neutral-300 hover:bg-neutral-700'
               }`}
             >
-              <span className="truncate">{m.name}</span>
-              <span className="text-[10px] text-neutral-500 shrink-0 ml-2">{formatSize(m.size)}</span>
+              <span className="min-w-0 truncate">{m.name}</span>
+              <span className="ml-2 flex shrink-0 items-center gap-1">
+                {m.capabilities?.includes('vision') && (
+                  <span className="rounded bg-teal-900/50 px-1 py-0 text-[9px] text-teal-300">vision</span>
+                )}
+                <span className="text-[10px] text-neutral-500">{formatSize(m.size)}</span>
+              </span>
             </button>
           ))}
           {models.length === 0 && (
-            <div className="px-3 py-2 text-xs text-neutral-500">No models installed</div>
+            <div className="px-3 py-2 text-xs text-neutral-500">{emptyLabel}</div>
           )}
         </div>
       )}

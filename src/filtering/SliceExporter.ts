@@ -14,11 +14,12 @@ export async function exportSlicesToJpeg(
   slices: SelectedSlice[],
   windowCenter: number,
   windowWidth: number,
+  options: { maxLongEdge?: number } = {},
 ): Promise<ExportedSlice[]> {
   const results: ExportedSlice[] = [];
 
   for (const slice of slices) {
-    const blob = await renderSliceToJpeg(slice.imageId, windowCenter, windowWidth);
+    const blob = await renderSliceToJpeg(slice.imageId, windowCenter, windowWidth, options.maxLongEdge ?? MAX_LONG_EDGE);
     if (blob) {
       results.push({
         blob,
@@ -35,6 +36,7 @@ async function renderSliceToJpeg(
   imageId: string,
   windowCenter: number,
   windowWidth: number,
+  maxLongEdge: number,
 ): Promise<Blob | null> {
   const image = await imageLoader.loadAndCacheImage(imageId);
 
@@ -79,10 +81,10 @@ async function renderSliceToJpeg(
 
   ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
 
-  // Resize if needed (keep aspect ratio, max long edge = 1568px)
+  // Resize if needed (keep aspect ratio)
   const longEdge = Math.max(width, height);
-  if (longEdge > MAX_LONG_EDGE) {
-    const scale = MAX_LONG_EDGE / longEdge;
+  if (longEdge > maxLongEdge) {
+    const scale = maxLongEdge / longEdge;
     const newW = Math.round(width * scale);
     const newH = Math.round(height * scale);
 

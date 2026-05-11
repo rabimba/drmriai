@@ -9,6 +9,15 @@ import type {
   ViewportContext,
 } from './types';
 import { logger } from '../utils/logger';
+import {
+  DEFAULT_GEMMA_TRANSFORMERS_EXPORT_LONG_EDGE,
+  DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
+  DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
+} from './gemmaTransformersConfig';
+import {
+  subscribeGemmaTransformersRuntime,
+  type GemmaTransformersRuntimeEvent,
+} from './GemmaTransformersRuntime';
 
 export type ChatStatus = 'idle' | 'planning' | 'awaiting-confirmation' | 'exporting' | 'analyzing' | 'following-up' | 'error';
 
@@ -111,6 +120,24 @@ function updateStep(
   return steps.map((s) => (s.id === id ? { ...s, ...updates } : s));
 }
 
+function isGemmaModelStage(stage: GemmaTransformersRuntimeEvent['stage']): boolean {
+  return [
+    'webgpu-check',
+    'module-loading',
+    'processor-loading',
+    'model-loading',
+    'session-ready',
+    'cache-hit',
+  ].includes(stage);
+}
+
+function formatGemmaRuntimeDetail(event: GemmaTransformersRuntimeEvent): string {
+  const percent = typeof event.progress === 'number' ? ` ${Math.round(event.progress)}%` : '';
+  const file = event.file ? ` · ${event.file}` : '';
+  const elapsed = typeof event.elapsedMs === 'number' ? ` · ${(event.elapsedMs / 1000).toFixed(1)}s` : '';
+  return `${event.message}${percent}${file}${elapsed}`;
+}
+
 function getProviderLabels(providerConfig: ProviderConfig): { textModel: string; visionModel: string } {
   if (providerConfig.provider === 'ollama') {
     return {
@@ -126,10 +153,37 @@ function getProviderLabels(providerConfig: ProviderConfig): { textModel: string;
     };
   }
 
+  if (providerConfig.provider === 'gemma-transformers') {
+    const label = providerConfig.gemmaTransformersModelId || DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID;
+    return {
+      textModel: getModelLabel(label),
+      visionModel: getModelLabel(label),
+    };
+  }
+
   return {
     textModel: providerConfig.geminiModel || DEFAULT_GEMINI_MODEL,
     visionModel: providerConfig.geminiModel || DEFAULT_GEMINI_MODEL,
   };
+}
+
+function getProviderImageBudget(providerConfig: ProviderConfig): number {
+  if (providerConfig.provider === 'gemma-transformers') {
+    return Math.max(1, Math.min(DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES, Math.round(providerConfig.gemmaTransformersMaxImages ?? DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES)));
+  }
+  return 20;
+}
+
+function getProviderExportMaxLongEdge(providerConfig: ProviderConfig): number | undefined {
+  if (providerConfig.provider === 'gemma-transformers') {
+    return DEFAULT_GEMMA_TRANSFORMERS_EXPORT_LONG_EDGE;
+  }
+  return undefined;
+}
+
+function isLocalizerSeries(series: StudyMetadata['series'][number] | undefined): boolean {
+  const description = (series?.seriesDescription ?? '').toLowerCase();
+  return /\b(loc|localizer|scout|survey|topogram|pilot)\b/.test(description);
 }
 
 /**
@@ -193,13 +247,26 @@ function estimateSliceCount(sel: SeriesSelection): number {
  * Fix all selections in a plan. Enforce total ≤ 20 (reduce supplementary first).
  * Re-populate legacy fields from selections[0].
  */
-function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata): SelectionPlan {
-  const MAX_TOTAL = 20;
+function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal = 20): SelectionPlan {
+  const MAX_TOTAL = Math.max(1, maxTotal);
 
   // Fix each selection individually with generous per-selection budget first
   let fixedSelections = plan.selections.map((sel) =>
     fixSelection(sel, metadata, MAX_TOTAL),
   );
+
+  const nonLocalizerSelections = fixedSelections.filter((sel) => {
+    const series = metadata.series.find((s) => String(s.seriesNumber) === sel.seriesNumber);
+    if (!isLocalizerSeries(series)) return true;
+    logger.warn(`[PlanFix] Removed localizer/scout series #${sel.seriesNumber} from the analysis plan`);
+    return false;
+  });
+  if (nonLocalizerSelections.length > 0 && nonLocalizerSelections.length !== fixedSelections.length) {
+    fixedSelections = nonLocalizerSelections.map((sel, index) => ({
+      ...sel,
+      role: index === 0 ? 'primary' : 'supplementary',
+    }));
+  }
 
   // Enforce total ≤ 20: reduce supplementary series first, then primary
   let total = fixedSelections.reduce((sum, s) => sum + estimateSliceCount(s), 0);
@@ -270,6 +337,29 @@ export function useLLMChat(
   const surveyModeRef = useRef(false);
   const planTimingRef = useRef<{ t0: number; t1: number }>({ t0: 0, t1: 0 });
 
+  const attachGemmaRuntimeStatus = useCallback((activeStepId: string) => {
+    if (providerConfig.provider !== 'gemma-transformers') {
+      return () => {};
+    }
+
+    return subscribeGemmaTransformersRuntime((event) => {
+      const stepId = isGemmaModelStage(event.stage) ? 'model' : activeStepId;
+      const status = event.stage === 'error'
+        ? 'error'
+        : event.stage === 'session-ready' || event.stage === 'cache-hit'
+          ? 'done'
+          : 'active';
+
+      setPipeline((p) => p && ({
+        ...p,
+        steps: updateStep(p.steps, stepId, {
+          status,
+          detail: formatGemmaRuntimeDetail(event),
+        }),
+      }));
+    });
+  }, [providerConfig.provider]);
+
   const startAnalysis = useCallback(async (hint: string, viewportContext?: ViewportContext, options?: { surveyMode?: boolean }) => {
     if (!metadata) return;
     abortRef.current = false;
@@ -279,6 +369,14 @@ export function useLLMChat(
     // Initialize pipeline
     const { textModel, visionModel } = getProviderLabels(providerConfig);
     const initialSteps: PipelineStep[] = [
+      ...(providerConfig.provider === 'gemma-transformers'
+        ? [{
+            id: 'model',
+            label: 'Loading Gemma 4 Browser model',
+            status: 'pending' as const,
+            detail: 'First run downloads model files into the browser cache.',
+          }]
+        : []),
       { id: 'plan', label: `Selection planning (${textModel})`, status: 'pending' },
       { id: 'select', label: 'Selecting slices', status: 'pending' },
       { id: 'export', label: 'Exporting images', status: 'pending' },
@@ -319,12 +417,18 @@ export function useLLMChat(
         })),
       });
 
-      const rawPlan = await service.getSelectionPlan(metadata, hint, viewportContext);
+      const unsubscribeGemmaStatus = attachGemmaRuntimeStatus('plan');
+      let rawPlan: SelectionPlan;
+      try {
+        rawPlan = await service.getSelectionPlan(metadata, hint, viewportContext);
+      } finally {
+        unsubscribeGemmaStatus();
+      }
       const t1 = performance.now();
       if (abortRef.current) { logger.groupEnd(); return; }
 
       logger.log('Call 1 — Raw plan:', rawPlan);
-      const plan = fixSelectionPlan(rawPlan, metadata);
+      const plan = fixSelectionPlan(rawPlan, metadata, getProviderImageBudget(providerConfig));
       if (plan.sliceRange[0] !== rawPlan.sliceRange[0] || plan.sliceRange[1] !== rawPlan.sliceRange[1]) {
         logger.log('Plan fixed:', `[${rawPlan.sliceRange}] → [${plan.sliceRange}]`);
       }
@@ -351,10 +455,17 @@ export function useLLMChat(
       logger.groupEnd();
       if (abortRef.current) return;
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setPipeline((p) => p && ({
+        ...p,
+        steps: updateStep(p.steps, 'plan', {
+          status: 'error',
+          detail: msg,
+        }),
+      }));
       setError(msg);
       setStatus('error');
     }
-  }, [metadata, providerConfig]);
+  }, [metadata, providerConfig, attachGemmaRuntimeStatus]);
 
   const confirmPlan = useCallback(async (adjustedPlan: SelectionPlan) => {
     if (!metadata) return;
@@ -363,12 +474,14 @@ export function useLLMChat(
 
     const hint = hintRef.current;
 
+    const executionPlan = fixSelectionPlan(adjustedPlan, metadata, getProviderImageBudget(providerConfig));
+
     // Update plan and pipeline with adjusted values
-    setCurrentPlan(adjustedPlan);
-    const planDetail = `Series #${adjustedPlan.targetSeries}, instances ${adjustedPlan.sliceRange[0]}–${adjustedPlan.sliceRange[1]}, W:${adjustedPlan.windowWidth} C:${adjustedPlan.windowCenter}`;
+    setCurrentPlan(executionPlan);
+    const planDetail = `Series #${executionPlan.targetSeries}, instances ${executionPlan.sliceRange[0]}–${executionPlan.sliceRange[1]}, W:${executionPlan.windowWidth} C:${executionPlan.windowCenter}`;
     setPipeline((p) => p && ({
       ...p,
-      plan: adjustedPlan,
+      plan: executionPlan,
       steps: updateStep(p.steps, 'plan', {
         status: 'done',
         detail: planDetail,
@@ -387,14 +500,15 @@ export function useLLMChat(
         loadSliceExporter(),
       ]);
       const service = createLLMService(providerConfig);
+      const exportMaxLongEdge = getProviderExportMaxLongEdge(providerConfig);
 
       logger.group('[Dr.MRI.AI] Analysis Pipeline (continued)');
-      logger.log('Confirmed plan:', adjustedPlan);
+      logger.log('Confirmed plan:', executionPlan);
 
       // Step 2: Select slices across all series
       setPipeline((p) => p && ({
         ...p,
-        steps: updateStep(p.steps, 'select', { status: 'active', detail: `Selecting from ${adjustedPlan.selections.length} series...` }),
+        steps: updateStep(p.steps, 'select', { status: 'active', detail: `Selecting from ${executionPlan.selections.length} series...` }),
       }));
 
       const allMappings: SliceMapping[] = [];
@@ -406,7 +520,7 @@ export function useLLMChat(
       setStatus('exporting');
       const t2 = performance.now();
 
-      for (const sel of adjustedPlan.selections) {
+      for (const sel of executionPlan.selections) {
         const selectedSlices = selectSlicesForSelection(metadata, sel);
         logger.log(`[${sel.role}] Series #${sel.seriesNumber}: selected ${selectedSlices.length} slices`);
 
@@ -426,7 +540,9 @@ export function useLLMChat(
           steps: updateStep(p.steps, 'export', { status: 'active', detail: `Rendering Series #${sel.seriesNumber} (${selectedSlices.length} slices, W:${sel.windowWidth} C:${sel.windowCenter})...` }),
         }));
 
-        const exported = await exportSlicesToJpeg(selectedSlices, sel.windowCenter, sel.windowWidth);
+        const exported = await exportSlicesToJpeg(selectedSlices, sel.windowCenter, sel.windowWidth, {
+          maxLongEdge: exportMaxLongEdge,
+        });
         if (abortRef.current) { logger.groupEnd(); return; }
 
         for (const e of exported) {
@@ -458,7 +574,7 @@ export function useLLMChat(
         throw new Error('No slices matched the selection plan. Try a different prompt.');
       }
 
-      const sliceDetail = `${totalSelectedCount} slices from ${adjustedPlan.selections.length} series`;
+      const sliceDetail = `${totalSelectedCount} slices from ${executionPlan.selections.length} series`;
       setPipeline((p) => p && ({
         ...p,
         sliceCount: totalSelectedCount,
@@ -492,7 +608,13 @@ export function useLLMChat(
 
       const sliceLabels = allMappings.map((m) => m.label);
       logger.log(`Call 2 — Sending ${allBlobs.length} images to LLM (${sliceLabels.join(', ')})...`);
-      const analysisText = await service.analyzeSlices(allBlobs, metadata, hint, adjustedPlan, sliceLabels, surveyModeRef.current);
+      const unsubscribeGemmaStatus = attachGemmaRuntimeStatus('analyze');
+      let analysisText: string;
+      try {
+        analysisText = await service.analyzeSlices(allBlobs, metadata, hint, executionPlan, sliceLabels, surveyModeRef.current);
+      } finally {
+        unsubscribeGemmaStatus();
+      }
       const t5 = performance.now();
       if (abortRef.current) { logger.groupEnd(); return; }
 
@@ -518,7 +640,7 @@ export function useLLMChat(
         analysisId: assistantMsg.id,
         createdAt: assistantMsg.timestamp,
         prompt: hint,
-        plan: adjustedPlan,
+        plan: executionPlan,
         surveyMode: surveyModeRef.current,
         images: allMappings.map((mapping, index) => ({
           fileName: toEvidenceFileName(mapping.seriesNumber, mapping.instanceNumber, index + 1),
@@ -536,10 +658,17 @@ export function useLLMChat(
       logger.groupEnd();
       if (abortRef.current) return;
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setPipeline((p) => p && ({
+        ...p,
+        steps: updateStep(p.steps, 'analyze', {
+          status: 'error',
+          detail: msg,
+        }),
+      }));
       setError(msg);
       setStatus('error');
     }
-  }, [metadata, providerConfig]);
+  }, [metadata, providerConfig, attachGemmaRuntimeStatus]);
 
   const cancelPlan = useCallback(() => {
     abortRef.current = true;

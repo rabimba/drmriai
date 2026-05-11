@@ -225,7 +225,6 @@ export default function ViewportGrid({
       renderingEngineRef.current?.destroy();
       renderingEngineRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Set up viewports when layout/data changes (reuses the single engine)

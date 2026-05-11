@@ -19,5 +19,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Cornerstone and Transformers.js expose several loosely typed imperative APIs.
+      // Keep strict TypeScript for app code while allowing these integration boundaries.
+      '@typescript-eslint/no-explicit-any': 'off',
+      // This app intentionally derives small bits of UI state when clinical context changes.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

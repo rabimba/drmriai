@@ -149,20 +149,7 @@ export default function DicomDropZone({ onFilesLoaded }: DicomDropZoneProps) {
               const meta = extractFileMetadata(dataSet);
               return { file, meta };
             } catch {
-              return {
-                file,
-                meta: {
-                  instanceNumber: 0,
-                  zPosition: 0,
-                  imagePositionPatient: [0, 0, 0] as [number, number, number],
-                  imageOrientationPatient: [1, 0, 0, 0, 1, 0] as [number, number, number, number, number, number],
-                  seriesInstanceUID: 'unknown',
-                  seriesNumber: 0,
-                  seriesDescription: '',
-                  modality: 'unknown',
-                  studyDescription: '',
-                },
-              };
+              return null;
             }
           })
         );

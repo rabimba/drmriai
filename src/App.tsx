@@ -20,6 +20,12 @@ import {
   DEFAULT_GEMMA_WEB_WASM_ROOT,
   LEGACY_GEMMA_WEB_MODEL_PATHS,
 } from './llm/gemmaWebConfig';
+import {
+  DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
+  DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET,
+  DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
+  DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
+} from './llm/gemmaTransformersConfig';
 import { useLLMChat, type SliceMapping } from './llm/useLLMChat';
 import { logger } from './utils/logger';
 
@@ -28,7 +34,7 @@ const SAVED_ANALYSES_KEY = 'dr-mri-ai-saved-analyses';
 const LEGACY_STORAGE_KEY = 'dicomassist-llm-config';
 const LEGACY_SAVED_ANALYSES_KEY = 'dicomassist-saved-analyses';
 const OLLAMA_DEFAULT_TEXT_MODEL = 'alibayram/medgemma:4b';
-const OLLAMA_DEFAULT_VISION_MODEL = 'llava:7b';
+const OLLAMA_DEFAULT_VISION_MODEL = 'gemma4:latest';
 const OLLAMA_DEFAULT_URL = 'http://localhost:11434';
 const DEFAULT_GEMMA_WEB_FALLBACK_PATHS = Array.from(
   new Set([
@@ -48,6 +54,10 @@ function getDefaultProviderConfig(): ProviderConfig {
     gemmaWebTextModelPath: DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
     gemmaWebVisionModelPath: DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
     gemmaWebWasmRoot: DEFAULT_GEMMA_WEB_WASM_ROOT,
+    gemmaTransformersModelId: DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
+    gemmaTransformersDtype: DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
+    gemmaTransformersMaxImages: DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
+    gemmaTransformersImageTokenBudget: DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET,
   };
 }
 
@@ -62,6 +72,20 @@ function loadConfig(): ProviderConfig {
       if (savedProvider === 'claude') {
         merged.provider = 'gemini';
       }
+      if (
+        merged.provider === 'ollama' &&
+        (merged.ollamaVisionModel === 'llava:7b' || merged.ollamaVisionModel === 'gemma3:4b')
+      ) {
+        merged.ollamaVisionModel = OLLAMA_DEFAULT_VISION_MODEL;
+      }
+      merged.gemmaTransformersMaxImages = Math.max(
+        1,
+        Math.min(DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES, Number(merged.gemmaTransformersMaxImages) || DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES),
+      );
+      merged.gemmaTransformersImageTokenBudget = Math.max(
+        70,
+        Math.min(280, Number(merged.gemmaTransformersImageTokenBudget) || DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET),
+      );
       const shouldMigrateGemmaDefaultToOllama =
         savedProvider === 'gemma-web' &&
         DEFAULT_GEMMA_WEB_FALLBACK_PATHS.includes(merged.gemmaWebTextModelPath || DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH) &&
@@ -135,6 +159,7 @@ function formatFileTimestamp(timestamp: number): string {
 }
 
 function getProviderLabel(config: ProviderConfig): string {
+  if (config.provider === 'gemma-transformers') return 'Gemma 4 Browser';
   if (config.provider === 'gemma-web') return 'Gemma Web';
   if (config.provider === 'ollama') return 'Ollama';
   return 'Gemini API';
@@ -513,7 +538,8 @@ export default function App() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [currentPlan, studyMetadata]); // intentionally omitting imageIds to avoid loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- imageIds changes as part of applying the plan and would create a loop.
+  }, [currentPlan, studyMetadata]);
 
   // When plan arrives, ensure sidebar is open
   useEffect(() => {

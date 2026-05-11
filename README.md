@@ -48,7 +48,22 @@ A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI give
 
 For local models, install [Ollama](https://ollama.ai), pull a model (`ollama pull gemma3:4b`), and select Ollama in settings. Note: local models usually produce lower quality results for medical image analysis than the hosted Gemini path.
 
-The default provider is **Ollama** for a more stable local workflow. Gemma Web remains available as an experimental browser path in settings.
+The default provider is **Ollama** for a more stable local workflow. **Gemma 4 Browser** is available for fully browser-local analysis through Transformers.js + WebGPU:
+
+- **Model**: `onnx-community/gemma-4-E2B-it-ONNX`
+- **Runtime**: `@huggingface/transformers` with WebGPU and `q4f16`
+- **Default image budget**: up to 16 sampled JPEGs at a reduced 768px browser-friendly export size
+- **Analysis mode**: chunked browser inference. Images are reviewed in batches of up to 4, then synthesized with a final text-only pass.
+- **Image token budget**: 70, 140, or 280 tokens/image. Higher budgets are intentionally disabled because they can exceed browser ONNX tensor limits.
+- **Requirement**: a WebGPU-capable browser such as a recent Chrome or Edge build
+
+On the first run, the pipeline shows Gemma model download/load status while the browser caches the model files. Debug logs are also exposed in the browser console under `[GemmaTransformers]` and `[Dr.MRI.AI]`. To copy the structured log buffer for debugging, run:
+
+```js
+window.__DRMRIAI_PRINT_DEBUG_LOGS__()
+```
+
+Gemma Web remains available as the older experimental MediaPipe/LiteRT browser path in settings.
 
 If you want to override that, select **Gemma Web** in settings and point it at a different web-converted Gemma model under `public/models/` or a remote URL:
 

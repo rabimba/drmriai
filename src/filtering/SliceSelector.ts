@@ -73,6 +73,8 @@ function applyStrategy(
   axisIdx: number,
   maxSlices: number = MAX_SLICES,
 ): SelectedSlice[] {
+  if (slices.length === 0) return [];
+
   let selected: import('../dicom/types').SliceMetadata[];
 
   switch (params.samplingStrategy) {
@@ -81,15 +83,17 @@ function applyStrategy(
       break;
 
     case 'every_nth': {
-      const n = params.samplingParam ?? 2;
+      const n = Math.max(1, Math.round(params.samplingParam ?? 2));
       selected = slices.filter((_, i) => i % n === 0);
       break;
     }
 
     case 'uniform': {
-      const count = Math.min(params.samplingParam ?? 10, slices.length);
+      const count = Math.min(Math.max(1, Math.round(params.samplingParam ?? 10)), slices.length);
       if (count >= slices.length) {
         selected = [...slices];
+      } else if (count === 1) {
+        selected = [slices[Math.floor((slices.length - 1) / 2)]];
       } else {
         selected = [];
         for (let i = 0; i < count; i++) {

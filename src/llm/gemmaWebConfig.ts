@@ -1,5 +1,5 @@
 export const DEFAULT_GEMMA_WEB_WASM_ROOT =
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@latest/wasm';
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.27/wasm';
 
 export const DEFAULT_GEMMA_WEB_MODEL_PATH =
   'https://huggingface.co/vba01/gemma-3n-E2B-it-int4/resolve/main/gemma-3n-E2B-it-int4.task';
