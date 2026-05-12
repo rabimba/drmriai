@@ -12,6 +12,8 @@ Developed by Rabimba.
 
 I started building Dr.MRI.AI after spending time around my partner&apos;s scans and realizing how hard it is to quickly focus on the few slices that actually matter in a large study. The goal was not to replace a radiologist, but to build a privacy-first research tool that can narrow hundreds of images into a smaller, explainable subset for review, discussion, and experimentation.
 
+https://rabimba.github.io/drmriai/
+
 ## How It Works
 
 A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI gives garbage results. Dr.MRI.AI uses a **two-call architecture**:
