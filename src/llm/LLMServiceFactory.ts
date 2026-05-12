@@ -33,6 +33,11 @@ import {
   generateGemmaTransformersResponse,
   type GemmaTransformersMessage,
 } from './GemmaTransformersRuntime';
+import {
+  DEFAULT_OLLAMA_URL,
+  getOllamaUrlProblem,
+  normalizeOllamaBaseUrl,
+} from './ollamaConfig';
 import { debugLog } from '../utils/logger';
 
 // --- Shared Helpers ---
@@ -275,7 +280,9 @@ class OllamaService implements LLMService {
   constructor(textModel: string, visionModel: string, baseUrl: string) {
     this.textModel = textModel;
     this.visionModel = visionModel;
-    this.baseUrl = baseUrl;
+    this.baseUrl = normalizeOllamaBaseUrl(baseUrl);
+    const problem = getOllamaUrlProblem(this.baseUrl);
+    if (problem) throw new Error(problem);
   }
 
   async getSelectionPlan(metadata: StudyMetadata, clinicalHint: string, viewportContext?: ViewportContext): Promise<SelectionPlan> {
@@ -318,6 +325,9 @@ class OllamaService implements LLMService {
         content: msg.content,
       })),
     ];
+
+    const problem = getOllamaUrlProblem(this.baseUrl);
+    if (problem) throw new Error(problem);
 
     const res = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
@@ -383,7 +393,7 @@ class OllamaService implements LLMService {
       if (err instanceof DOMException && err.name === 'TimeoutError') {
         throw new Error(`Ollama request timed out (5min). Model: ${params.model}. Try fewer slices or a smaller model.`);
       }
-      throw new Error('Cannot connect to Ollama. Is it running? (ollama serve)');
+      throw new Error(`Cannot connect to Ollama at ${this.baseUrl}. Is it running? (ollama serve)`);
     }
 
     if (!res.ok) {
@@ -864,7 +874,7 @@ export function createLLMService(config: ProviderConfig): LLMService {
       config.gemmaTransformersImageTokenBudget,
     );
   }
-  const baseUrl = config.ollamaUrl || 'http://localhost:11434';
+  const baseUrl = normalizeOllamaBaseUrl(config.ollamaUrl);
   const textModel = config.ollamaTextModel || DEFAULT_TEXT_MODEL;
   const visionModel = config.ollamaVisionModel || DEFAULT_VISION_MODEL;
   return new OllamaService(textModel, visionModel, baseUrl);
@@ -897,6 +907,10 @@ function ollamaShowCacheKey(baseUrl: string, model: string): string {
 }
 
 async function fetchOllamaShowInfo(baseUrl: string, model: string, timeoutMs = 5000): Promise<OllamaShowInfo> {
+  baseUrl = normalizeOllamaBaseUrl(baseUrl);
+  const problem = getOllamaUrlProblem(baseUrl);
+  if (problem) throw new Error(problem);
+
   const cacheKey = ollamaShowCacheKey(baseUrl, model);
   const cached = ollamaShowCache.get(cacheKey);
   if (cached) return cached;
@@ -958,7 +972,14 @@ async function ensureOllamaImageModel(baseUrl: string, model: string): Promise<v
   }
 }
 
-export async function fetchOllamaModels(baseUrl = 'http://localhost:11434'): Promise<OllamaModelInfo[]> {
+export async function fetchOllamaModels(baseUrl = DEFAULT_OLLAMA_URL): Promise<OllamaModelInfo[]> {
+  baseUrl = normalizeOllamaBaseUrl(baseUrl);
+  const problem = getOllamaUrlProblem(baseUrl);
+  if (problem) {
+    debugLog('warn', 'Ollama', problem, { baseUrl });
+    return [];
+  }
+
   try {
     const res = await fetch(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
     if (!res.ok) return [];
@@ -980,7 +1001,14 @@ export async function fetchOllamaModels(baseUrl = 'http://localhost:11434'): Pro
   }
 }
 
-export async function pingOllama(baseUrl = 'http://localhost:11434'): Promise<boolean> {
+export async function pingOllama(baseUrl = DEFAULT_OLLAMA_URL): Promise<boolean> {
+  baseUrl = normalizeOllamaBaseUrl(baseUrl);
+  const problem = getOllamaUrlProblem(baseUrl);
+  if (problem) {
+    debugLog('warn', 'Ollama', problem, { baseUrl });
+    return false;
+  }
+
   try {
     const res = await fetch(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
     return res.ok;
@@ -992,8 +1020,15 @@ export async function pingOllama(baseUrl = 'http://localhost:11434'): Promise<bo
 export async function pullOllamaModel(
   modelName: string,
   onProgress: (status: string, percent: number | null) => void,
-  baseUrl = 'http://localhost:11434',
+  baseUrl = DEFAULT_OLLAMA_URL,
 ): Promise<boolean> {
+  baseUrl = normalizeOllamaBaseUrl(baseUrl);
+  const problem = getOllamaUrlProblem(baseUrl);
+  if (problem) {
+    onProgress(problem, null);
+    return false;
+  }
+
   try {
     const res = await fetch(`${baseUrl}/api/pull`, {
       method: 'POST',

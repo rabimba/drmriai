@@ -93,7 +93,7 @@ This app is deployable as a static site on free tiers because there is no requir
 - Use Node 20+ for builds. `package.json` now declares that explicitly.
 - Use the full `npm run build` command so TypeScript is checked before deploy.
 - Do not put a production Gemini API key into `VITE_*` environment variables on a static host. Those values are bundled into client JavaScript. For hosted demos, keep the current runtime BYOK flow in the settings panel.
-- Ollama only works for the person running Ollama locally. If you deploy to GitHub Pages, Vercel, or `*.pages.dev`, public visitors will not be able to use your local Ollama instance.
+- Ollama only works for the person running Ollama locally. If you deploy to GitHub Pages, Vercel, or `*.pages.dev`, public visitors will not be able to use your local Ollama instance. On hosted HTTPS pages, keep the Ollama URL as `http://localhost:11434` or `http://127.0.0.1:11434`; do not use `0.0.0.0`.
 - Gemma browser providers stay fully static, but first load is heavier because the browser downloads the model bundle and WebGPU runtime.
 
 ### GitHub Pages
@@ -105,6 +105,12 @@ https://rabimba.github.io/drmriai/
 ```
 
 The workflow builds with `VITE_BASE_PATH=/drmriai/`, so Vite emits asset URLs under `/drmriai/` and the bundled sample knee MRI is loaded from `/drmriai/sample-data/sample-knee-mri.zip`.
+
+For local Ollama from the hosted Pages app, start Ollama with the Pages origin allowed:
+
+```bash
+OLLAMA_ORIGINS=https://rabimba.github.io ollama serve
+```
 
 One-time repository setup:
 

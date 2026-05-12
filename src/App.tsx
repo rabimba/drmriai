@@ -26,6 +26,7 @@ import {
   DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
   DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
 } from './llm/gemmaTransformersConfig';
+import { DEFAULT_OLLAMA_URL, normalizeOllamaBaseUrl } from './llm/ollamaConfig';
 import { useLLMChat, type SliceMapping } from './llm/useLLMChat';
 import { logger } from './utils/logger';
 
@@ -35,7 +36,6 @@ const LEGACY_STORAGE_KEY = 'dicomassist-llm-config';
 const LEGACY_SAVED_ANALYSES_KEY = 'dicomassist-saved-analyses';
 const OLLAMA_DEFAULT_TEXT_MODEL = 'alibayram/medgemma:4b';
 const OLLAMA_DEFAULT_VISION_MODEL = 'gemma4:latest';
-const OLLAMA_DEFAULT_URL = 'http://localhost:11434';
 const DEFAULT_GEMMA_WEB_FALLBACK_PATHS = Array.from(
   new Set([
     DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
@@ -50,7 +50,7 @@ function getDefaultProviderConfig(): ProviderConfig {
     geminiModel: 'gemini-2.5-flash',
     ollamaTextModel: OLLAMA_DEFAULT_TEXT_MODEL,
     ollamaVisionModel: OLLAMA_DEFAULT_VISION_MODEL,
-    ollamaUrl: OLLAMA_DEFAULT_URL,
+    ollamaUrl: DEFAULT_OLLAMA_URL,
     gemmaWebTextModelPath: DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
     gemmaWebVisionModelPath: DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
     gemmaWebWasmRoot: DEFAULT_GEMMA_WEB_WASM_ROOT,
@@ -78,6 +78,7 @@ function loadConfig(): ProviderConfig {
       ) {
         merged.ollamaVisionModel = OLLAMA_DEFAULT_VISION_MODEL;
       }
+      merged.ollamaUrl = normalizeOllamaBaseUrl(merged.ollamaUrl);
       merged.gemmaTransformersMaxImages = Math.max(
         1,
         Math.min(DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES, Number(merged.gemmaTransformersMaxImages) || DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES),

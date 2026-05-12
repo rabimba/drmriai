@@ -16,6 +16,11 @@ import {
   GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGETS,
 } from '../llm/gemmaTransformersConfig';
 import { DEFAULT_GEMINI_MODEL, type OllamaModelInfo } from '../llm/LLMServiceFactory';
+import {
+  DEFAULT_OLLAMA_URL,
+  getOllamaUrlProblem,
+  normalizeOllamaBaseUrl,
+} from '../llm/ollamaConfig';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -64,7 +69,8 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
   const [pulling, setPulling] = useState<{ model: string; status: string; percent: number | null } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const baseUrl = config.ollamaUrl || 'http://localhost:11434';
+  const baseUrl = normalizeOllamaBaseUrl(config.ollamaUrl);
+  const ollamaUrlProblem = getOllamaUrlProblem(baseUrl);
   const webGpuAvailable = hasWebGpuSupport();
 
   // Close on outside click
@@ -80,6 +86,12 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
   }, [open, onClose]);
 
   const refreshModels = useCallback(async () => {
+    if (ollamaUrlProblem) {
+      setOllamaStatus('offline');
+      setInstalledModels([]);
+      return;
+    }
+
     const { pingOllama, fetchOllamaModels } = await loadOllamaFactory();
     setOllamaStatus('checking');
     const online = await pingOllama(baseUrl);
@@ -90,7 +102,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
     } else {
       setInstalledModels([]);
     }
-  }, [baseUrl]);
+  }, [baseUrl, ollamaUrlProblem]);
 
   // Check Ollama when panel opens or provider changes to ollama
   useEffect(() => {
@@ -465,7 +477,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
               </div>
 
               {ollamaStatus === 'offline' && (
-                <OllamaOfflineHelp onRetry={refreshModels} baseUrl={baseUrl} />
+                <OllamaOfflineHelp onRetry={refreshModels} baseUrl={baseUrl} urlProblem={ollamaUrlProblem} />
               )}
 
               {/* Ollama URL */}
@@ -473,11 +485,15 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                 <label className="text-xs text-neutral-400 block mb-1.5">Ollama URL</label>
                 <input
                   type="text"
-                  value={config.ollamaUrl ?? 'http://localhost:11434'}
+                  value={config.ollamaUrl ?? DEFAULT_OLLAMA_URL}
                   onChange={(e) => onConfigChange({ ...config, ollamaUrl: e.target.value })}
-                  placeholder="http://localhost:11434"
+                  onBlur={() => onConfigChange({ ...config, ollamaUrl: normalizeOllamaBaseUrl(config.ollamaUrl) })}
+                  placeholder={DEFAULT_OLLAMA_URL}
                   className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
                 />
+                <p className={`mt-1.5 text-[10px] ${ollamaUrlProblem ? 'text-amber-300/90' : 'text-neutral-500'}`}>
+                  {ollamaUrlProblem ?? 'For GitHub Pages, use localhost or 127.0.0.1. Do not use 0.0.0.0; it is only a server bind address.'}
+                </p>
               </div>
 
               {ollamaStatus === 'online' && (
@@ -616,13 +632,25 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
 
 // --- Offline Help ---
 
-function OllamaOfflineHelp({ onRetry, baseUrl }: { onRetry: () => void; baseUrl: string }) {
+function OllamaOfflineHelp({
+  onRetry,
+  baseUrl,
+  urlProblem,
+}: {
+  onRetry: () => void;
+  baseUrl: string;
+  urlProblem: string | null;
+}) {
   const [copied, setCopied] = useState(false);
   const [polling, setPolling] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const serveCommand =
+    typeof window !== 'undefined' && window.location.protocol === 'https:'
+      ? `OLLAMA_ORIGINS=${window.location.origin} ollama serve`
+      : 'ollama serve';
 
   const copyCommand = () => {
-    navigator.clipboard.writeText('ollama serve');
+    navigator.clipboard.writeText(serveCommand);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -651,11 +679,11 @@ function OllamaOfflineHelp({ onRetry, baseUrl }: { onRetry: () => void; baseUrl:
   return (
     <div className="bg-neutral-900 rounded-lg px-3 py-3 space-y-2.5">
       <div className="text-xs text-neutral-400">
-        Ollama is not running. Start it in your terminal:
+        {urlProblem ?? 'Ollama is not running. Start it in your terminal:'}
       </div>
       <div className="flex items-center gap-2">
         <code className="flex-1 bg-neutral-950 text-neutral-200 font-mono text-xs px-3 py-1.5 rounded">
-          ollama serve
+          {serveCommand}
         </code>
         <button
           onClick={copyCommand}
