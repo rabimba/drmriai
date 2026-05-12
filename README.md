@@ -31,7 +31,7 @@ A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI give
 - **Privacy-first** — DICOM files are processed entirely in your browser. No data is uploaded to any server. Image data is only sent to the LLM provider you configure when you run an analysis, and Gemma Web keeps both planning and analysis on-device
 - **Multiple layouts** — 1×1, 1×2, 2×1, 2×2 grid, and MPR (axial/sagittal/coronal)
 - **Standard tools** — Window/Level, Zoom, Pan, Length measurement, Rotate, Flip, Invert, Cine playback
-- **Provider-agnostic** — Works with Gemini API, local models via Ollama, or browser-local Gemma Web models
+- **Provider-agnostic** — Works with Gemini API, OpenAI-compatible endpoints, local models via Ollama, or browser-local Gemma Web models
 
 ## Getting Started
 
@@ -50,10 +50,12 @@ npm run dev
 ### Configure AI analysis
 
 1. Click the ⚙ Settings icon in the toolbar
-2. Keep **Ollama** as the default local workflow, or switch to **Gemini API** and enter your API key ([create one in Google AI Studio](https://aistudio.google.com/app/apikey))
+2. Keep **Ollama** as the default local workflow, or switch to **Gemini API** / **OpenAI-Compatible** and enter your runtime endpoint credentials
 3. Load DICOM files, open the AI workspace, and describe what to evaluate
 
 For local models, install [Ollama](https://ollama.ai), pull a model (`ollama pull gemma3:4b`), and select Ollama in settings. Note: local models usually produce lower quality results for medical image analysis than the hosted Gemini path.
+
+For private or enterprise gateways, select **OpenAI-Compatible**, enter the `/v1` endpoint URL and API key, then click **Refresh models**. The app calls `/models` to populate text and vision model dropdowns. Because OpenAI-compatible model metadata does not standardize multimodal capabilities, vision support is inferred from model names; if your gateway uses custom names, you can still type model IDs manually.
 
 The default provider is **Ollama** for a more stable local workflow. **Gemma 4 Browser** is available for fully browser-local analysis through Transformers.js + WebGPU:
 
@@ -85,6 +87,7 @@ The browser integration uses Google AI Edge MediaPipe/WebGPU runtime. The defaul
 - **React 19** + TypeScript + Vite
 - **Cornerstone3D v4** — medical image rendering, viewport management, tools
 - **Gemini API** — optional hosted multimodal LLM for image analysis
+- **OpenAI-compatible endpoints** — optional hosted/private chat completions gateways with runtime BYOK credentials
 - **Ollama** — optional local model support
 - **Gemma Web + MediaPipe/WebGPU** — optional browser-local on-device inference
 
@@ -94,7 +97,7 @@ This app is deployable as a static site on free tiers because there is no requir
 
 - Use Node 20+ for builds. `package.json` now declares that explicitly.
 - Use the full `npm run build` command so TypeScript is checked before deploy.
-- Do not put a production Gemini API key into `VITE_*` environment variables on a static host. Those values are bundled into client JavaScript. For hosted demos, keep the current runtime BYOK flow in the settings panel.
+- Do not put production Gemini or OpenAI-compatible API keys into `VITE_*` environment variables on a static host. Those values are bundled into client JavaScript. For hosted demos, keep the current runtime BYOK flow in the settings panel.
 - Ollama only works for the person running Ollama locally. If you deploy to GitHub Pages, Vercel, or `*.pages.dev`, public visitors will not be able to use your local Ollama instance. On hosted HTTPS pages, keep the Ollama URL as `http://localhost:11434` or `http://127.0.0.1:11434`; do not use `0.0.0.0`.
 - Gemma browser providers stay fully static, but first load is heavier because the browser downloads the model bundle and WebGPU runtime.
 

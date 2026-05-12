@@ -51,6 +51,10 @@ function getDefaultProviderConfig(): ProviderConfig {
     ollamaTextModel: OLLAMA_DEFAULT_TEXT_MODEL,
     ollamaVisionModel: OLLAMA_DEFAULT_VISION_MODEL,
     ollamaUrl: DEFAULT_OLLAMA_URL,
+    openAiCompatibleBaseUrl: '',
+    openAiCompatibleApiKey: '',
+    openAiCompatibleTextModel: '',
+    openAiCompatibleVisionModel: '',
     gemmaWebTextModelPath: DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
     gemmaWebVisionModelPath: DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
     gemmaWebWasmRoot: DEFAULT_GEMMA_WEB_WASM_ROOT,
@@ -162,6 +166,7 @@ function formatFileTimestamp(timestamp: number): string {
 function getProviderLabel(config: ProviderConfig): string {
   if (config.provider === 'gemma-transformers') return 'Gemma 4 Browser';
   if (config.provider === 'gemma-web') return 'Gemma Web';
+  if (config.provider === 'openai-compatible') return 'OpenAI-Compatible';
   if (config.provider === 'ollama') return 'Ollama';
   return 'Gemini API';
 }

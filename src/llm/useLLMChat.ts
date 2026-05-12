@@ -142,7 +142,7 @@ function getProviderLabels(providerConfig: ProviderConfig): { textModel: string;
   if (providerConfig.provider === 'ollama') {
     return {
       textModel: providerConfig.ollamaTextModel || 'alibayram/medgemma:4b',
-      visionModel: providerConfig.ollamaVisionModel || 'llava:7b',
+      visionModel: providerConfig.ollamaVisionModel || 'gemma4:latest',
     };
   }
 
@@ -158,6 +158,13 @@ function getProviderLabels(providerConfig: ProviderConfig): { textModel: string;
     return {
       textModel: getModelLabel(label),
       visionModel: getModelLabel(label),
+    };
+  }
+
+  if (providerConfig.provider === 'openai-compatible') {
+    return {
+      textModel: providerConfig.openAiCompatibleTextModel || 'OpenAI-compatible text model',
+      visionModel: providerConfig.openAiCompatibleVisionModel || providerConfig.openAiCompatibleTextModel || 'OpenAI-compatible vision model',
     };
   }
 

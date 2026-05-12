@@ -15,7 +15,13 @@ import {
   GEMMA_TRANSFORMERS_DTYPES,
   GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGETS,
 } from '../llm/gemmaTransformersConfig';
-import { DEFAULT_GEMINI_MODEL, type OllamaModelInfo } from '../llm/LLMServiceFactory';
+import {
+  DEFAULT_GEMINI_MODEL,
+  fetchOpenAiCompatibleModels,
+  normalizeOpenAiCompatibleBaseUrl,
+  type OllamaModelInfo,
+  type OpenAiCompatibleModelInfo,
+} from '../llm/LLMServiceFactory';
 import {
   DEFAULT_OLLAMA_URL,
   getOllamaUrlProblem,
@@ -36,6 +42,15 @@ interface RecommendedModel {
   role: 'text' | 'vision' | 'both';
 }
 
+interface ModelDropdownItem {
+  name: string;
+  size?: number;
+  capabilities?: string[];
+  family?: string;
+  families?: string[];
+  owned_by?: string;
+}
+
 const RECOMMENDED_MODELS: RecommendedModel[] = [
   { name: 'alibayram/medgemma:4b', label: 'MedGemma 4B', desc: 'Medical text planning, no vision (2.5GB)', role: 'text' },
   { name: 'gemma4:latest', label: 'Gemma 4', desc: 'Installed vision-capable Gemma model', role: 'both' },
@@ -44,33 +59,39 @@ const RECOMMENDED_MODELS: RecommendedModel[] = [
   { name: 'llama3.2:latest', label: 'Llama 3.2 3B', desc: 'Fast general text (2GB)', role: 'text' },
 ];
 
-function formatSize(bytes: number): string {
+function formatSize(bytes?: number): string {
+  if (!bytes || bytes <= 0) return '';
   const gb = bytes / (1024 * 1024 * 1024);
   if (gb >= 1) return `${gb.toFixed(1)}GB`;
   return `${(bytes / (1024 * 1024)).toFixed(0)}MB`;
 }
 
-let ollamaFactoryPromise: Promise<typeof import('../llm/LLMServiceFactory')> | null = null;
+let llmFactoryPromise: Promise<typeof import('../llm/LLMServiceFactory')> | null = null;
 
-function loadOllamaFactory() {
-  if (!ollamaFactoryPromise) {
-    ollamaFactoryPromise = import('../llm/LLMServiceFactory');
+function loadLlmFactory() {
+  if (!llmFactoryPromise) {
+    llmFactoryPromise = import('../llm/LLMServiceFactory');
   }
-  return ollamaFactoryPromise;
+  return llmFactoryPromise;
 }
 
-function modelSupportsVision(model: OllamaModelInfo | undefined): boolean {
+function modelSupportsVision(model: ModelDropdownItem | undefined): boolean {
   return !!model?.capabilities?.includes('vision');
 }
 
 export default function SettingsPanel({ open, onClose, config, onConfigChange }: SettingsPanelProps) {
   const [ollamaStatus, setOllamaStatus] = useState<'unknown' | 'checking' | 'online' | 'offline'>('unknown');
   const [installedModels, setInstalledModels] = useState<OllamaModelInfo[]>([]);
+  const [openAiStatus, setOpenAiStatus] = useState<'unknown' | 'checking' | 'online' | 'offline'>('unknown');
+  const [openAiModels, setOpenAiModels] = useState<OpenAiCompatibleModelInfo[]>([]);
+  const [openAiError, setOpenAiError] = useState<string | null>(null);
   const [pulling, setPulling] = useState<{ model: string; status: string; percent: number | null } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const baseUrl = normalizeOllamaBaseUrl(config.ollamaUrl);
   const ollamaUrlProblem = getOllamaUrlProblem(baseUrl);
+  const openAiBaseUrl = normalizeOpenAiCompatibleBaseUrl(config.openAiCompatibleBaseUrl);
+  const openAiApiKey = config.openAiCompatibleApiKey?.trim() ?? '';
   const webGpuAvailable = hasWebGpuSupport();
 
   // Close on outside click
@@ -92,7 +113,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
       return;
     }
 
-    const { pingOllama, fetchOllamaModels } = await loadOllamaFactory();
+    const { pingOllama, fetchOllamaModels } = await loadLlmFactory();
     setOllamaStatus('checking');
     const online = await pingOllama(baseUrl);
     setOllamaStatus(online ? 'online' : 'offline');
@@ -103,6 +124,30 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
       setInstalledModels([]);
     }
   }, [baseUrl, ollamaUrlProblem]);
+
+  const refreshOpenAiModels = useCallback(async () => {
+    if (!openAiBaseUrl || !openAiApiKey) {
+      setOpenAiStatus('offline');
+      setOpenAiModels([]);
+      setOpenAiError('Enter an endpoint URL and API key before loading models.');
+      return;
+    }
+
+    setOpenAiStatus('checking');
+    setOpenAiError(null);
+    try {
+      const models = await fetchOpenAiCompatibleModels(openAiBaseUrl, openAiApiKey);
+      setOpenAiModels(models);
+      setOpenAiStatus('online');
+      if (models.length === 0) {
+        setOpenAiError('The endpoint responded, but no models were listed. You can still enter model names manually.');
+      }
+    } catch (error) {
+      setOpenAiModels([]);
+      setOpenAiStatus('offline');
+      setOpenAiError(error instanceof Error ? error.message : 'Could not load models from the OpenAI-compatible endpoint.');
+    }
+  }, [openAiApiKey, openAiBaseUrl]);
 
   // Check Ollama when panel opens or provider changes to ollama
   useEffect(() => {
@@ -121,8 +166,34 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
     }
   }, [open, config, ollamaStatus, installedModels, onConfigChange]);
 
+  useEffect(() => {
+    if (!open || config.provider !== 'openai-compatible' || openAiStatus !== 'online' || openAiModels.length === 0) return;
+    const textCandidates = openAiModels.filter((model) => model.capabilities.includes('text'));
+    const textModels = textCandidates.length ? textCandidates : openAiModels;
+    const visionCandidates = openAiModels.filter(modelSupportsVision);
+    const currentTextModel = config.openAiCompatibleTextModel;
+    const currentVisionModel = config.openAiCompatibleVisionModel;
+    const textModelExists = currentTextModel && textModels.some((model) => model.name === currentTextModel);
+    const visionModelExists = currentVisionModel && openAiModels.some((model) => model.name === currentVisionModel);
+    const nextTextModel = textModelExists ? currentTextModel : textModels[0]?.name;
+    const nextVisionModel = visionModelExists
+      ? currentVisionModel
+      : visionCandidates[0]?.name ?? nextTextModel;
+
+    if (
+      nextTextModel &&
+      (nextTextModel !== currentTextModel || nextVisionModel !== currentVisionModel)
+    ) {
+      onConfigChange({
+        ...config,
+        openAiCompatibleTextModel: nextTextModel,
+        openAiCompatibleVisionModel: nextVisionModel,
+      });
+    }
+  }, [open, config, openAiStatus, openAiModels, onConfigChange]);
+
   const handlePull = async (modelName: string) => {
-    const { pullOllamaModel } = await loadOllamaFactory();
+    const { pullOllamaModel } = await loadLlmFactory();
     setPulling({ model: modelName, status: 'Starting...', percent: null });
     const success = await pullOllamaModel(
       modelName,
@@ -150,6 +221,13 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
   const visionModel = config.ollamaVisionModel || 'gemma4:latest';
   const selectedVisionModelInfo = installedModels.find((m) => m.name === visionModel);
   const visionModels = installedModels.filter(modelSupportsVision);
+  const openAiTextModels = openAiModels.filter((model) => model.capabilities.includes('text'));
+  const openAiTextDropdownModels = openAiTextModels.length ? openAiTextModels : openAiModels;
+  const openAiVisionModels = openAiModels.filter(modelSupportsVision);
+  const openAiVisionDropdownModels = openAiVisionModels.length ? openAiVisionModels : openAiTextDropdownModels;
+  const openAiTextModel = config.openAiCompatibleTextModel ?? '';
+  const openAiVisionModel = config.openAiCompatibleVisionModel || openAiTextModel;
+  const selectedOpenAiVisionModelInfo = openAiModels.find((model) => model.name === openAiVisionModel);
   const gemmaTransformersModelId = config.gemmaTransformersModelId || DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID;
   const gemmaTransformersDtype = config.gemmaTransformersDtype || DEFAULT_GEMMA_TRANSFORMERS_DTYPE;
   const gemmaTransformersMaxImages = Math.max(
@@ -196,6 +274,14 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                 }`}
               >
                 Gemini API
+              </button>
+              <button
+                onClick={() => setProvider('openai-compatible')}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  config.provider === 'openai-compatible' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                OpenAI-Compatible
               </button>
               <button
                 onClick={() => setProvider('gemma-transformers')}
@@ -435,6 +521,139 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
             </>
           )}
 
+          {/* OpenAI-compatible fields */}
+          {config.provider === 'openai-compatible' && (
+            <>
+              <div className="bg-neutral-900 rounded-lg px-3 py-3 space-y-1.5">
+                <p className="text-xs text-neutral-300">
+                  Use any OpenAI-compatible `/v1` chat completions endpoint.
+                </p>
+                <p className="text-[10px] text-neutral-500">
+                  The app queries `/models` for dropdowns, then uses a text model for slice planning and follow-ups plus a vision-capable model for image analysis.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">Endpoint URL</label>
+                <input
+                  type="text"
+                  value={config.openAiCompatibleBaseUrl ?? ''}
+                  onChange={(e) => onConfigChange({ ...config, openAiCompatibleBaseUrl: e.target.value })}
+                  onBlur={() => onConfigChange({
+                    ...config,
+                    openAiCompatibleBaseUrl: normalizeOpenAiCompatibleBaseUrl(config.openAiCompatibleBaseUrl),
+                  })}
+                  placeholder="https://your-gateway.example.com/v1"
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Paste the base endpoint, not `/chat/completions`. HTTPS endpoints must allow browser CORS.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">API Key</label>
+                <input
+                  type="password"
+                  value={config.openAiCompatibleApiKey ?? ''}
+                  onChange={(e) => onConfigChange({ ...config, openAiCompatibleApiKey: e.target.value })}
+                  placeholder="Bearer token"
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Stored in localStorage only. Do not bundle shared production secrets into a static deployment.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                {openAiStatus === 'checking' && (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+                    <span className="text-neutral-400">Loading models...</span>
+                  </>
+                )}
+                {openAiStatus === 'online' && (
+                  <>
+                    <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                    <span className="text-green-400">Endpoint reachable</span>
+                    <span className="text-neutral-500">({openAiModels.length} model{openAiModels.length !== 1 ? 's' : ''})</span>
+                  </>
+                )}
+                {openAiStatus === 'offline' && (
+                  <>
+                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-red-400">Model discovery failed</span>
+                  </>
+                )}
+                {openAiStatus === 'unknown' && (
+                  <span className="text-neutral-500">Load models after entering endpoint and key.</span>
+                )}
+                <button
+                  onClick={refreshOpenAiModels}
+                  disabled={openAiStatus === 'checking' || !openAiBaseUrl || !openAiApiKey}
+                  className="text-neutral-500 hover:text-neutral-300 ml-auto text-xs disabled:opacity-40 disabled:hover:text-neutral-500"
+                >
+                  Refresh models
+                </button>
+              </div>
+
+              {openAiError && (
+                <div className="bg-neutral-900 rounded-lg px-3 py-2 text-[10px] text-amber-300/90">
+                  {openAiError}
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">
+                  Text Model <span className="text-neutral-600">(Call 1 + follow-ups)</span>
+                </label>
+                {openAiTextDropdownModels.length > 0 ? (
+                  <ModelDropdown
+                    value={openAiTextModel}
+                    models={openAiTextDropdownModels}
+                    onChange={(model) => onConfigChange({ ...config, openAiCompatibleTextModel: model })}
+                    emptyLabel="No text models listed"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={openAiTextModel}
+                    onChange={(e) => onConfigChange({ ...config, openAiCompatibleTextModel: e.target.value })}
+                    placeholder="model-name"
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1.5">
+                  Vision Model <span className="text-neutral-600">(Call 2: image analysis)</span>
+                </label>
+                {openAiVisionDropdownModels.length > 0 ? (
+                  <ModelDropdown
+                    value={openAiVisionModel}
+                    models={openAiVisionDropdownModels}
+                    onChange={(model) => onConfigChange({ ...config, openAiCompatibleVisionModel: model })}
+                    emptyLabel="No vision models inferred"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={openAiVisionModel}
+                    onChange={(e) => onConfigChange({ ...config, openAiCompatibleVisionModel: e.target.value })}
+                    placeholder="vision-model-name"
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
+                  />
+                )}
+                {openAiModels.length > 0 && selectedOpenAiVisionModelInfo && !modelSupportsVision(selectedOpenAiVisionModelInfo) && (
+                  <p className="mt-1.5 text-[10px] text-amber-300/80">
+                    Vision support is inferred from model names. If this model is actually multimodal, you can still try it.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
           {/* Ollama fields */}
           {config.provider === 'ollama' && (
             <>
@@ -659,7 +878,7 @@ function OllamaOfflineHelp({
     setPolling(true);
     // Check every 2 seconds
     intervalRef.current = setInterval(async () => {
-      const { pingOllama } = await loadOllamaFactory();
+      const { pingOllama } = await loadLlmFactory();
       const ok = await pingOllama(baseUrl);
       if (ok) {
         setPolling(false);
@@ -731,7 +950,7 @@ function ModelDropdown({
   emptyLabel = 'No models installed',
 }: {
   value: string;
-  models: OllamaModelInfo[];
+  models: ModelDropdownItem[];
   onChange: (model: string) => void;
   emptyLabel?: string;
 }) {
@@ -776,7 +995,12 @@ function ModelDropdown({
                 {m.capabilities?.includes('vision') && (
                   <span className="rounded bg-teal-900/50 px-1 py-0 text-[9px] text-teal-300">vision</span>
                 )}
-                <span className="text-[10px] text-neutral-500">{formatSize(m.size)}</span>
+                {m.owned_by && (
+                  <span className="max-w-20 truncate text-[10px] text-neutral-500">{m.owned_by}</span>
+                )}
+                {m.size != null && m.size > 0 && (
+                  <span className="text-[10px] text-neutral-500">{formatSize(m.size)}</span>
+                )}
               </span>
             </button>
           ))}

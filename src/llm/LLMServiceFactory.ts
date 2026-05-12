@@ -158,6 +158,179 @@ function extractChatCompletionText(data: { choices?: Array<{ message?: { content
     .trim();
 }
 
+type ChatCompletionContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
+interface ChatCompletionMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string | ChatCompletionContentPart[];
+}
+
+export interface OpenAiCompatibleModelInfo {
+  id: string;
+  name: string;
+  object?: string;
+  created?: number;
+  owned_by?: string;
+  capabilities: Array<'text' | 'vision'>;
+}
+
+function normalizeOpenAiCompatibleModelId(model: unknown): string | null {
+  if (typeof model === 'string') return model;
+  if (!model || typeof model !== 'object') return null;
+  const candidate = model as { id?: unknown; name?: unknown; model?: unknown };
+  if (typeof candidate.id === 'string') return candidate.id;
+  if (typeof candidate.name === 'string') return candidate.name;
+  if (typeof candidate.model === 'string') return candidate.model;
+  return null;
+}
+
+export function normalizeOpenAiCompatibleBaseUrl(baseUrl?: string): string {
+  const trimmed = (baseUrl ?? '').trim();
+  if (!trimmed) return '';
+
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return withScheme
+    .replace(/\/+$/, '')
+    .replace(/\/chat\/completions$/i, '')
+    .replace(/\/models$/i, '');
+}
+
+function buildOpenAiCompatibleUrl(baseUrl: string, path: string): string {
+  const normalized = normalizeOpenAiCompatibleBaseUrl(baseUrl);
+  return `${normalized}/${path.replace(/^\/+/, '')}`;
+}
+
+export function inferOpenAiCompatibleModelCapabilities(modelName: string): Array<'text' | 'vision'> {
+  const lower = modelName.toLowerCase();
+  if (/(^|[-_:/.])(embed|embedding|rerank|whisper|tts|speech|moderation)([-_:/.]|$)/i.test(lower)) {
+    return [];
+  }
+
+  const capabilities: Array<'text' | 'vision'> = ['text'];
+  const visionPattern =
+    /(vision|multimodal|multi-modal|llava|bakllava|pixtral|internvl|mllama|qwen[-_.]?(2|2\.5)?[-_.]?vl|qwen[-_.]?vl|gpt-4o|gpt-4\.1|gpt-5|o3|o4|claude-3|claude-sonnet-4|gemini|gemma[-_.]?4|gemma4|medgemma|llama[-_.]?3\.2[-_.]?vision|minicpm[-_.]?v)/i;
+  if (visionPattern.test(lower)) {
+    capabilities.push('vision');
+  }
+  return capabilities;
+}
+
+function extractOpenAiCompatibleModelCapabilities(
+  modelName: string,
+  source: Record<string, unknown>,
+): Array<'text' | 'vision'> {
+  const capabilities = new Set<'text' | 'vision'>(inferOpenAiCompatibleModelCapabilities(modelName));
+  const capabilityFields = [
+    source.capabilities,
+    source.modalities,
+    source.input_modalities,
+    source.supported_modalities,
+    source.type,
+    source.model_type,
+  ];
+  const explicitText = capabilityFields
+    .flatMap((value) => Array.isArray(value) ? value : [value])
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+    .toLowerCase();
+
+  if (/\b(text|chat|llm|completion|completions)\b/.test(explicitText)) {
+    capabilities.add('text');
+  }
+  if (/\b(image|images|vision|visual|multimodal|multi-modal|vl)\b/.test(explicitText)) {
+    capabilities.add('text');
+    capabilities.add('vision');
+  }
+  if (/\b(embed|embedding|rerank|moderation|audio|speech|tts|whisper)\b/.test(explicitText)) {
+    capabilities.delete('vision');
+    capabilities.delete('text');
+  }
+
+  return Array.from(capabilities);
+}
+
+function normalizeOpenAiCompatibleModel(raw: unknown): OpenAiCompatibleModelInfo | null {
+  const id = normalizeOpenAiCompatibleModelId(raw);
+  if (!id) return null;
+  const source = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+  const capabilities = extractOpenAiCompatibleModelCapabilities(id, source);
+  return {
+    id,
+    name: id,
+    object: typeof source.object === 'string' ? source.object : undefined,
+    created: typeof source.created === 'number' ? source.created : undefined,
+    owned_by: typeof source.owned_by === 'string' ? source.owned_by : undefined,
+    capabilities,
+  };
+}
+
+function extractOpenAiCompatibleError(body: string): string {
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { message?: unknown; type?: unknown; code?: unknown } | string;
+      message?: unknown;
+    };
+    if (typeof parsed.error === 'string') return parsed.error;
+    if (parsed.error && typeof parsed.error === 'object') {
+      const message = typeof parsed.error.message === 'string' ? parsed.error.message : '';
+      const code = typeof parsed.error.code === 'string' ? ` (${parsed.error.code})` : '';
+      if (message) return `${message}${code}`;
+    }
+    if (typeof parsed.message === 'string') return parsed.message;
+  } catch { /* plain text body */ }
+  return body;
+}
+
+function formatOpenAiCompatibleHttpError(status: number, body: string, model: string, hadImages: boolean): string {
+  const error = extractOpenAiCompatibleError(body);
+  if (status === 401 || status === 403) {
+    return 'OpenAI-compatible endpoint rejected the API key. Check the endpoint and key in Settings.';
+  }
+  if (status === 404) {
+    return `OpenAI-compatible endpoint or model "${model}" was not found. Check the /v1 base URL and selected model.`;
+  }
+  if (hadImages && /image|vision|multimodal|content type|unsupported/i.test(error)) {
+    return `OpenAI-compatible model "${model}" did not accept image input. Choose a vision-capable model for Call 2.`;
+  }
+  return `OpenAI-compatible API error (${status}) from "${model}": ${error}`;
+}
+
+export async function fetchOpenAiCompatibleModels(
+  baseUrl: string,
+  apiKey: string,
+): Promise<OpenAiCompatibleModelInfo[]> {
+  const normalizedBaseUrl = normalizeOpenAiCompatibleBaseUrl(baseUrl);
+  const token = apiKey.trim();
+  if (!normalizedBaseUrl || !token) return [];
+
+  const res = await fetch(buildOpenAiCompatibleUrl(normalizedBaseUrl, '/models'), {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(formatOpenAiCompatibleHttpError(res.status, body, 'models', false));
+  }
+
+  const data = await res.json() as { data?: unknown; models?: unknown };
+  const rawModels = Array.isArray(data.data)
+    ? data.data
+    : Array.isArray(data.models)
+      ? data.models
+      : [];
+
+  return rawModels
+    .map(normalizeOpenAiCompatibleModel)
+    .filter((model): model is OpenAiCompatibleModelInfo => Boolean(model))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // --- Gemini Service ---
 
 class GeminiService implements LLMService {
@@ -267,6 +440,167 @@ class GeminiService implements LLMService {
 
     const data = await res.json();
     return extractChatCompletionText(data);
+  }
+}
+
+// --- OpenAI-Compatible Service ---
+
+class OpenAiCompatibleService implements LLMService {
+  private baseUrl: string;
+  private apiKey: string;
+  private textModel: string;
+  private visionModel: string;
+
+  constructor(baseUrl?: string, apiKey?: string, textModel?: string, visionModel?: string) {
+    this.baseUrl = normalizeOpenAiCompatibleBaseUrl(baseUrl);
+    this.apiKey = apiKey?.trim() ?? '';
+    this.textModel = textModel?.trim() ?? '';
+    this.visionModel = visionModel?.trim() || this.textModel;
+
+    if (!this.baseUrl) {
+      throw new Error('OpenAI-compatible endpoint URL is required. Enter the /v1 base URL in Settings.');
+    }
+    if (!this.apiKey) {
+      throw new Error('OpenAI-compatible API key is required. Enter it in Settings.');
+    }
+    if (!this.textModel) {
+      throw new Error('Choose a text model for the OpenAI-compatible provider in Settings.');
+    }
+  }
+
+  async getSelectionPlan(metadata: StudyMetadata, clinicalHint: string, viewportContext?: ViewportContext): Promise<SelectionPlan> {
+    const response = await this.callChat({
+      model: this.textModel,
+      messages: [
+        { role: 'system', content: buildSelectionSystemPrompt() },
+        { role: 'user', content: buildSelectionUserPrompt(metadata, clinicalHint, viewportContext) },
+      ],
+      temperature: 0,
+      maxTokens: 1024,
+      hadImages: false,
+    });
+    return parseSelectionPlan(response);
+  }
+
+  async analyzeSlices(
+    images: Blob[],
+    metadata: StudyMetadata,
+    clinicalHint: string,
+    plan: SelectionPlan,
+    sliceLabels: string[],
+    surveyMode?: boolean,
+  ): Promise<string> {
+    if (!this.visionModel) {
+      throw new Error('Choose a vision model for the OpenAI-compatible provider in Settings.');
+    }
+
+    const imageContents = await Promise.all(
+      images.map(async (blob, i) => [
+        {
+          type: 'text' as const,
+          text: sliceLabels[i] ?? `Image ${i + 1}`,
+        },
+        {
+          type: 'image_url' as const,
+          image_url: {
+            url: `data:image/jpeg;base64,${await blobToBase64(blob)}`,
+          },
+        },
+      ]),
+    );
+
+    const content: ChatCompletionContentPart[] = [
+      {
+        type: 'text',
+        text: `${buildAnalysisUserPrompt(metadata, clinicalHint, plan, sliceLabels)}\n\nThe ordered images follow after their labels.`,
+      },
+      ...imageContents.flat(),
+    ];
+
+    return this.callChat({
+      model: this.visionModel,
+      messages: [
+        { role: 'system', content: buildAnalysisSystemPrompt(surveyMode) },
+        { role: 'user', content },
+      ],
+      temperature: 0,
+      maxTokens: 4096,
+      hadImages: images.length > 0,
+    });
+  }
+
+  async sendFollowUp(conversationHistory: ChatMessage[], metadata: StudyMetadata): Promise<string> {
+    const messages: ChatCompletionMessage[] = conversationHistory.map((msg) => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    }));
+
+    return this.callChat({
+      model: this.textModel,
+      messages: [
+        { role: 'system', content: buildFollowUpSystemPrompt() + '\n\nStudy context: ' + metadata.studyDescription },
+        ...messages,
+      ],
+      temperature: 0,
+      maxTokens: 4096,
+      hadImages: false,
+    });
+  }
+
+  private async callChat(params: {
+    model: string;
+    messages: ChatCompletionMessage[];
+    temperature: number;
+    maxTokens: number;
+    hadImages: boolean;
+  }): Promise<string> {
+    let res: Response;
+    try {
+      debugLog('info', 'OpenAICompatible', 'Sending chat completions request', {
+        baseUrl: this.baseUrl,
+        model: params.model,
+        hasImages: params.hadImages,
+      });
+      res = await fetch(buildOpenAiCompatibleUrl(this.baseUrl, '/chat/completions'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: params.model,
+          messages: params.messages,
+          max_tokens: params.maxTokens,
+          temperature: params.temperature,
+          stream: false,
+        }),
+        signal: AbortSignal.timeout(300_000),
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'TimeoutError') {
+        throw new Error(`OpenAI-compatible request timed out (5min). Model: ${params.model}. Try fewer slices or a smaller model.`);
+      }
+      throw new Error(`Cannot connect to OpenAI-compatible endpoint at ${this.baseUrl}. Check the URL, CORS policy, and network access.`);
+    }
+
+    if (!res.ok) {
+      const body = await res.text();
+      const message = formatOpenAiCompatibleHttpError(res.status, body, params.model, params.hadImages);
+      debugLog('error', 'OpenAICompatible', message, {
+        status: res.status,
+        model: params.model,
+        hasImages: params.hadImages,
+        body,
+      });
+      throw new Error(message);
+    }
+
+    const data = await res.json();
+    const text = extractChatCompletionText(data);
+    if (!text) {
+      throw new Error(`OpenAI-compatible endpoint returned no assistant text for model "${params.model}".`);
+    }
+    return text;
   }
 }
 
@@ -858,6 +1192,14 @@ export function createLLMService(config: ProviderConfig): LLMService {
     const key = config.apiKey || (isLocalhost ? import.meta.env.VITE_GEMINI_API_KEY : undefined);
     if (!key) throw new Error('Gemini API key is required. Enter it in Settings.');
     return new GeminiService(key, config.geminiModel || DEFAULT_GEMINI_MODEL);
+  }
+  if (config.provider === 'openai-compatible') {
+    return new OpenAiCompatibleService(
+      config.openAiCompatibleBaseUrl,
+      config.openAiCompatibleApiKey,
+      config.openAiCompatibleTextModel,
+      config.openAiCompatibleVisionModel,
+    );
   }
   if (config.provider === 'gemma-web') {
     return new GemmaWebService(

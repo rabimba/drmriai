@@ -71,7 +71,7 @@ export interface AnalysisEvidenceBundle {
   images: AnalysisEvidenceImage[];
 }
 
-export type ProviderType = 'gemini' | 'ollama' | 'gemma-web' | 'gemma-transformers';
+export type ProviderType = 'gemini' | 'ollama' | 'openai-compatible' | 'gemma-web' | 'gemma-transformers';
 
 export interface ProviderConfig {
   provider: ProviderType;
@@ -80,6 +80,10 @@ export interface ProviderConfig {
   ollamaTextModel?: string;  // Ollama model for Call 1 (text-only planning)
   ollamaVisionModel?: string; // Ollama model for Call 2 (multimodal analysis)
   ollamaUrl?: string;        // Ollama base URL override
+  openAiCompatibleBaseUrl?: string; // OpenAI-compatible /v1 endpoint
+  openAiCompatibleApiKey?: string;  // OpenAI-compatible bearer token
+  openAiCompatibleTextModel?: string; // OpenAI-compatible model for Call 1 + follow-ups
+  openAiCompatibleVisionModel?: string; // OpenAI-compatible model for Call 2 image analysis
   gemmaWebTextModelPath?: string;   // Browser-local text model path/URL
   gemmaWebVisionModelPath?: string; // Browser-local multimodal model path/URL
   gemmaWebWasmRoot?: string;        // MediaPipe WebAssembly assets root
