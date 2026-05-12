@@ -1,5 +1,5 @@
 import type { StudyMetadata } from '../dicom/types';
-import type { SelectionPlan, SeriesSelection, ChatMessage, ProviderConfig, LLMService, ViewportContext } from './types';
+import type { AnalysisDepth, SelectionPlan, SeriesSelection, ChatMessage, ProviderConfig, LLMService, ViewportContext } from './types';
 import {
   buildSelectionSystemPrompt,
   buildSelectionUserPrompt,
@@ -153,6 +153,96 @@ type ChatCompletionContentPart =
 interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant';
   content: string | ChatCompletionContentPart[];
+}
+
+interface AnalyzeOptions {
+  batchSize?: number;
+  analysisDepth?: AnalysisDepth;
+}
+
+function buildProviderBatchPrompt(
+  metadata: StudyMetadata,
+  clinicalHint: string,
+  sliceLabels: string[],
+  batchIndex: number,
+  totalBatches: number,
+  surveyMode?: boolean,
+): string {
+  const manifest = sliceLabels.map((label, index) => `${index + 1}. ${label}`).join('\n');
+  return [
+    `Batch ${batchIndex + 1}/${totalBatches}. Analyze only these ${sliceLabels.length} ${metadata.modality} images.`,
+    'Educational research demo only, not clinical diagnosis.',
+    `Clinical question: ${clinicalHint}`,
+    `Images in this batch:\n${manifest}`,
+    '',
+    'Return concise batch notes:',
+    '- Visible abnormal findings with exact slice labels.',
+    '- Relevant normal/limited structures only when visible.',
+    '- Any structures or regions that this batch cannot assess.',
+    surveyMode ? '- For systematic survey, mention requested structures only if visible in this batch.' : '',
+  ].filter(Boolean).join('\n');
+}
+
+function buildProviderSynthesisPrompt(
+  metadata: StudyMetadata,
+  clinicalHint: string,
+  plan: SelectionPlan,
+  sliceLabels: string[],
+  batchSummaries: string[],
+  surveyMode?: boolean,
+  analysisDepth?: AnalysisDepth,
+): string {
+  const seriesSummary = plan.selections
+    .map((selection) => `#${selection.seriesNumber} ${selection.role}: ${selection.rationale}`)
+    .join('\n');
+  const summaries = batchSummaries
+    .map((summary, index) => `Batch ${index + 1}:\n${summary}`)
+    .join('\n\n');
+  const coverageLimit = analysisDepth === 'full'
+    ? 'Full selected-series coverage was reviewed, but conclusions still depend on image quality and selected series.'
+    : 'This is sampled selected-series coverage; extent assessment may be limited by omitted slices or series.';
+
+  return [
+    `Create one final ${metadata.modality} educational report from batch image-analysis notes.`,
+    'Do not diagnose. State that this is not for clinical use.',
+    `Study: ${metadata.studyDescription || 'unknown'}`,
+    `Clinical question: ${clinicalHint}`,
+    `Analysis depth: ${analysisDepth ?? 'standard'}`,
+    `Selected series:\n${seriesSummary}`,
+    `Reviewed slice labels:\n${sliceLabels.map((label, index) => `${index + 1}. ${label}`).join('\n')}`,
+    '',
+    `Batch summaries:\n${summaries}`,
+    '',
+    'Synthesis rules:',
+    '- Cite only findings that appear in the batch summaries.',
+    '- Do not invent findings from unreviewed slices or other series.',
+    '- Cite exact slice labels when describing findings.',
+    `- Include this coverage limitation: ${coverageLimit}`,
+    surveyMode
+      ? 'Format: Summary, Structure-by-structure assessment, Additional findings, Limitations.'
+      : 'Format: Summary, Findings, Limitations.',
+  ].filter(Boolean).join('\n');
+}
+
+async function buildImageContentParts(
+  images: Blob[],
+  sliceLabels: string[],
+): Promise<ChatCompletionContentPart[]> {
+  const imageContents = await Promise.all(
+    images.map(async (blob, index) => [
+      {
+        type: 'text' as const,
+        text: sliceLabels[index] ?? `Image ${index + 1}`,
+      },
+      {
+        type: 'image_url' as const,
+        image_url: {
+          url: `data:image/jpeg;base64,${await blobToBase64(blob)}`,
+        },
+      },
+    ]),
+  );
+  return imageContents.flat();
 }
 
 export interface OpenAiCompatibleModelInfo {
@@ -371,34 +461,88 @@ class GeminiService implements LLMService {
     plan: SelectionPlan,
     sliceLabels: string[],
     surveyMode?: boolean,
+    options?: AnalyzeOptions,
   ): Promise<string> {
-    const imageContents = await Promise.all(
-      images.map(async (blob, i) => [
-        {
-          type: 'text' as const,
-          text: sliceLabels[i] ?? `Image ${i + 1}`,
-        },
-        {
-          type: 'image_url' as const,
-          image_url: {
-            url: `data:image/jpeg;base64,${await blobToBase64(blob)}`,
-          },
-        },
-      ]),
-    );
+    const batchSize = Math.max(1, Math.round(options?.batchSize ?? images.length));
+    if (images.length > batchSize) {
+      return this.analyzeSlicesInBatches(images, metadata, clinicalHint, plan, sliceLabels, surveyMode, {
+        batchSize,
+        analysisDepth: options?.analysisDepth,
+      });
+    }
 
     const content = [
       {
         type: 'text' as const,
         text: `${buildAnalysisUserPrompt(metadata, clinicalHint, plan, sliceLabels)}\n\nThe ordered images follow after their labels.`,
       },
-      ...imageContents.flat(),
+      ...(await buildImageContentParts(images, sliceLabels)),
     ];
 
     return this.callGemini({
       messages: [
         { role: 'system', content: buildAnalysisSystemPrompt(surveyMode) },
         { role: 'user', content },
+      ],
+      temperature: 0,
+      maxTokens: 4096,
+    });
+  }
+
+  private async analyzeSlicesInBatches(
+    images: Blob[],
+    metadata: StudyMetadata,
+    clinicalHint: string,
+    plan: SelectionPlan,
+    sliceLabels: string[],
+    surveyMode: boolean | undefined,
+    options: Required<Pick<AnalyzeOptions, 'batchSize'>> & Pick<AnalyzeOptions, 'analysisDepth'>,
+  ): Promise<string> {
+    const imageBatches = chunkItems(images, options.batchSize);
+    const labelBatches = chunkItems(sliceLabels, options.batchSize);
+    const batchSummaries: string[] = [];
+
+    for (let batchIndex = 0; batchIndex < imageBatches.length; batchIndex += 1) {
+      const batchLabels = labelBatches[batchIndex];
+      const content = [
+        {
+          type: 'text' as const,
+          text: buildProviderBatchPrompt(
+            metadata,
+            clinicalHint,
+            batchLabels,
+            batchIndex,
+            imageBatches.length,
+            surveyMode,
+          ),
+        },
+        ...(await buildImageContentParts(imageBatches[batchIndex], batchLabels)),
+      ];
+      batchSummaries.push(await this.callGemini({
+        messages: [
+          { role: 'system', content: buildAnalysisSystemPrompt(surveyMode) },
+          { role: 'user', content },
+        ],
+        temperature: 0,
+        maxTokens: 2048,
+      }));
+    }
+
+    return this.callGemini({
+      messages: [
+        { role: 'system', content: 'Synthesize batch image notes into one educational report. Cite only batch-supported findings.' },
+        {
+          role: 'user',
+          content: buildProviderSynthesisPrompt(
+            metadata,
+            clinicalHint,
+            plan,
+            sliceLabels,
+            batchSummaries,
+            surveyMode,
+            options.analysisDepth,
+          ),
+        },
       ],
       temperature: 0,
       maxTokens: 4096,
@@ -499,32 +643,26 @@ class OpenAiCompatibleService implements LLMService {
     plan: SelectionPlan,
     sliceLabels: string[],
     surveyMode?: boolean,
+    options?: AnalyzeOptions,
   ): Promise<string> {
     if (!this.visionModel) {
       throw new Error('Choose a vision model for the OpenAI-compatible provider in Settings.');
     }
 
-    const imageContents = await Promise.all(
-      images.map(async (blob, i) => [
-        {
-          type: 'text' as const,
-          text: sliceLabels[i] ?? `Image ${i + 1}`,
-        },
-        {
-          type: 'image_url' as const,
-          image_url: {
-            url: `data:image/jpeg;base64,${await blobToBase64(blob)}`,
-          },
-        },
-      ]),
-    );
+    const batchSize = Math.max(1, Math.round(options?.batchSize ?? images.length));
+    if (images.length > batchSize) {
+      return this.analyzeSlicesInBatches(images, metadata, clinicalHint, plan, sliceLabels, surveyMode, {
+        batchSize,
+        analysisDepth: options?.analysisDepth,
+      });
+    }
 
     const content: ChatCompletionContentPart[] = [
       {
         type: 'text',
         text: `${buildAnalysisUserPrompt(metadata, clinicalHint, plan, sliceLabels)}\n\nThe ordered images follow after their labels.`,
       },
-      ...imageContents.flat(),
+      ...(await buildImageContentParts(images, sliceLabels)),
     ];
 
     return this.callChat({
@@ -536,6 +674,71 @@ class OpenAiCompatibleService implements LLMService {
       temperature: 0,
       maxTokens: 4096,
       hadImages: images.length > 0,
+    });
+  }
+
+  private async analyzeSlicesInBatches(
+    images: Blob[],
+    metadata: StudyMetadata,
+    clinicalHint: string,
+    plan: SelectionPlan,
+    sliceLabels: string[],
+    surveyMode: boolean | undefined,
+    options: Required<Pick<AnalyzeOptions, 'batchSize'>> & Pick<AnalyzeOptions, 'analysisDepth'>,
+  ): Promise<string> {
+    const imageBatches = chunkItems(images, options.batchSize);
+    const labelBatches = chunkItems(sliceLabels, options.batchSize);
+    const batchSummaries: string[] = [];
+
+    for (let batchIndex = 0; batchIndex < imageBatches.length; batchIndex += 1) {
+      const batchLabels = labelBatches[batchIndex];
+      const content: ChatCompletionContentPart[] = [
+        {
+          type: 'text',
+          text: buildProviderBatchPrompt(
+            metadata,
+            clinicalHint,
+            batchLabels,
+            batchIndex,
+            imageBatches.length,
+            surveyMode,
+          ),
+        },
+        ...(await buildImageContentParts(imageBatches[batchIndex], batchLabels)),
+      ];
+
+      batchSummaries.push(await this.callChat({
+        model: this.visionModel,
+        messages: [
+          { role: 'system', content: buildAnalysisSystemPrompt(surveyMode) },
+          { role: 'user', content },
+        ],
+        temperature: 0,
+        maxTokens: 2048,
+        hadImages: true,
+      }));
+    }
+
+    return this.callChat({
+      model: this.textModel,
+      messages: [
+        { role: 'system', content: 'Synthesize batch image notes into one educational report. Cite only batch-supported findings.' },
+        {
+          role: 'user',
+          content: buildProviderSynthesisPrompt(
+            metadata,
+            clinicalHint,
+            plan,
+            sliceLabels,
+            batchSummaries,
+            surveyMode,
+            options.analysisDepth,
+          ),
+        },
+      ],
+      temperature: 0,
+      maxTokens: 4096,
+      hadImages: false,
     });
   }
 
@@ -645,8 +848,17 @@ class OllamaService implements LLMService {
     plan: SelectionPlan,
     sliceLabels: string[],
     surveyMode?: boolean,
+    options?: AnalyzeOptions,
   ): Promise<string> {
     await ensureOllamaImageModel(this.baseUrl, this.visionModel);
+    const batchSize = Math.max(1, Math.round(options?.batchSize ?? images.length));
+    if (images.length > batchSize) {
+      return this.analyzeSlicesInBatches(images, metadata, clinicalHint, plan, sliceLabels, surveyMode, {
+        batchSize,
+        analysisDepth: options?.analysisDepth,
+      });
+    }
+
     const base64Images = await Promise.all(images.map(blobToBase64));
     const manifest = sliceLabels.map((l, i) => `  ${i + 1}. ${l}`).join('\n');
     const userContent =
@@ -658,6 +870,57 @@ class OllamaService implements LLMService {
       system: buildAnalysisSystemPrompt(surveyMode),
       userContent,
       images: base64Images,
+    });
+  }
+
+  private async analyzeSlicesInBatches(
+    images: Blob[],
+    metadata: StudyMetadata,
+    clinicalHint: string,
+    plan: SelectionPlan,
+    sliceLabels: string[],
+    surveyMode: boolean | undefined,
+    options: Required<Pick<AnalyzeOptions, 'batchSize'>> & Pick<AnalyzeOptions, 'analysisDepth'>,
+  ): Promise<string> {
+    const imageBatches = chunkItems(images, options.batchSize);
+    const labelBatches = chunkItems(sliceLabels, options.batchSize);
+    const batchSummaries: string[] = [];
+
+    for (let batchIndex = 0; batchIndex < imageBatches.length; batchIndex += 1) {
+      const batchImages = imageBatches[batchIndex];
+      const batchLabels = labelBatches[batchIndex];
+      const base64Images = await Promise.all(batchImages.map(blobToBase64));
+      const userContent =
+        `IMAGE BATCH ${batchIndex + 1}/${imageBatches.length}. The images are provided in the exact order listed.\n\n` +
+        buildProviderBatchPrompt(
+          metadata,
+          clinicalHint,
+          batchLabels,
+          batchIndex,
+          imageBatches.length,
+          surveyMode,
+        );
+
+      batchSummaries.push(await this.callOllama({
+        model: this.visionModel,
+        system: buildAnalysisSystemPrompt(surveyMode),
+        userContent,
+        images: base64Images,
+      }));
+    }
+
+    return this.callOllama({
+      model: this.textModel,
+      system: 'Synthesize batch image notes into one educational report. Cite only batch-supported findings.',
+      userContent: buildProviderSynthesisPrompt(
+        metadata,
+        clinicalHint,
+        plan,
+        sliceLabels,
+        batchSummaries,
+        surveyMode,
+        options.analysisDepth,
+      ),
     });
   }
 
@@ -926,16 +1189,21 @@ class GemmaTransformersService implements LLMService {
     plan: SelectionPlan,
     sliceLabels: string[],
     surveyMode?: boolean,
+    options?: AnalyzeOptions,
   ): Promise<string> {
     const limitedImages = images.slice(0, this.maxImages);
     const limitedLabels = sliceLabels.slice(0, limitedImages.length);
-    const imageBatches = chunkItems(limitedImages, this.batchSize);
-    const labelBatches = chunkItems(limitedLabels, this.batchSize);
+    const batchSize = Math.max(1, Math.min(
+      limitedImages.length || this.batchSize,
+      Math.round(options?.batchSize ?? this.batchSize),
+    ));
+    const imageBatches = chunkItems(limitedImages, batchSize);
+    const labelBatches = chunkItems(limitedLabels, batchSize);
 
     debugLog('info', 'GemmaTransformers', 'Starting chunked browser image analysis', {
       totalImages: limitedImages.length,
       exportedImages: images.length,
-      batchSize: this.batchSize,
+      batchSize,
       batchCount: imageBatches.length,
       imageTokenBudget: this.imageTokenBudget,
     });

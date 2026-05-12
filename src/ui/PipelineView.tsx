@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle, Loader2, Circle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { SelectionPlan } from '../llm/types';
 import type { PipelineState, PipelineStep, SliceMapping } from '../llm/useLLMChat';
+import { getDepthLabel } from '../llm/analysisDepth';
 
 export default function PipelineView({ pipeline }: { pipeline: PipelineState }) {
   const [expanded, setExpanded] = useState(true);
@@ -26,7 +27,12 @@ export default function PipelineView({ pipeline }: { pipeline: PipelineState }) 
             <PlanDetail plan={pipeline.plan} />
           )}
           {pipeline.sliceMappings.length > 0 && (
-            <SliceMappingDetail mappings={pipeline.sliceMappings} totalSlices={pipeline.totalSlices} />
+            <SliceMappingDetail
+              mappings={pipeline.sliceMappings}
+              totalSlices={pipeline.totalSlices}
+              analysisDepth={pipeline.analysisDepth}
+              batchCount={pipeline.batchCount}
+            />
           )}
         </div>
       )}
@@ -71,7 +77,17 @@ function PlanDetail({ plan }: { plan: SelectionPlan }) {
   );
 }
 
-function SliceMappingDetail({ mappings, totalSlices }: { mappings: SliceMapping[]; totalSlices: number }) {
+function SliceMappingDetail({
+  mappings,
+  totalSlices,
+  analysisDepth,
+  batchCount,
+}: {
+  mappings: SliceMapping[];
+  totalSlices: number;
+  analysisDepth?: PipelineState['analysisDepth'];
+  batchCount: number;
+}) {
   const [showAll, setShowAll] = useState(false);
   const labels = mappings.map((m) => m.label);
   const preview = showAll ? labels : labels.slice(0, 6);
@@ -80,7 +96,7 @@ function SliceMappingDetail({ mappings, totalSlices }: { mappings: SliceMapping[
   return (
     <div className="mt-1.5 ml-5.5 space-y-0.5 border-l border-white/10 pl-3 text-[10px] text-white/40">
       <p className="font-medium text-white/65">
-        Sent to vision model: {mappings.length} of {totalSlices} slices
+        Coverage: {getDepthLabel(analysisDepth ?? 'standard')} · {mappings.length}/{totalSlices} slices · {batchCount || 1} {(batchCount || 1) === 1 ? 'batch' : 'batches'}
       </p>
       <div className="flex flex-wrap gap-1">
         {preview.map((label, i) => (

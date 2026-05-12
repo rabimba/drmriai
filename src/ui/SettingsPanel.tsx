@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, CheckCircle, XCircle, Loader2, Download, ChevronDown, Copy, Check, RefreshCw } from 'lucide-react';
-import type { ProviderConfig, ProviderType } from '../llm/types';
+import type { AnalysisDepth, ProviderConfig, ProviderType } from '../llm/types';
 import {
   DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
   DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET,
@@ -23,6 +23,11 @@ import {
   getOllamaUrlProblem,
   normalizeOllamaBaseUrl,
 } from '../llm/ollamaConfig';
+import {
+  getAnalysisDepth,
+  getAnalysisDepthPolicy,
+  getDepthLabel,
+} from '../llm/analysisDepth';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -110,6 +115,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
   const openAiBaseUrl = normalizeOpenAiCompatibleBaseUrl(config.openAiCompatibleBaseUrl);
   const openAiApiKey = config.openAiCompatibleApiKey?.trim() ?? '';
   const webGpuAvailable = hasTransformersWebGpuSupport();
+  const analysisDepth = getAnalysisDepth(config);
 
   // Close on outside click
   useEffect(() => {
@@ -309,6 +315,40 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                 Gemma 4 Browser
               </button>
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-neutral-400 block mb-1.5">Default Coverage</label>
+            <div className="grid grid-cols-3 gap-0.5 bg-neutral-900 rounded-lg p-0.5">
+              {(['fast', 'standard', 'full'] as AnalysisDepth[]).map((depth) => {
+                const policy = getAnalysisDepthPolicy(config, depth);
+                const disabled = depth === 'full' && !policy.fullEnabled;
+                return (
+                  <button
+                    key={depth}
+                    type="button"
+                    onClick={() => !disabled && onConfigChange({ ...config, analysisDepth: depth })}
+                    disabled={disabled}
+                    title={disabled ? policy.warning : undefined}
+                    className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      analysisDepth === depth && !disabled
+                        ? 'bg-blue-600 text-white'
+                        : 'text-neutral-400 hover:text-neutral-200'
+                    } disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:text-neutral-400`}
+                  >
+                    {getDepthLabel(depth)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-neutral-500 mt-1">
+              Fast caps at 20 images. Standard expands selected diagnostic series to the provider budget. Full sends every selected diagnostic slice when supported.
+            </p>
+            {analysisDepth === 'full' && !getAnalysisDepthPolicy(config, 'full').fullEnabled && (
+              <p className="text-[10px] text-amber-300 mt-1">
+                Gemma Browser stays memory-constrained; Standard uses its configured image limit.
+              </p>
+            )}
           </div>
 
           {/* Gemma 4 Transformers.js fields */}

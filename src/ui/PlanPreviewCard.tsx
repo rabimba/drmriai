@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronUp, ChevronDown, X } from 'lucide-react';
-import type { SelectionPlan, SeriesSelection } from '../llm/types';
+import type { AnalysisDepth, ProviderConfig, SelectionPlan, SeriesSelection } from '../llm/types';
 import type { StudyMetadata } from '../dicom/types';
+import {
+  estimateSelectedSeriesTotal,
+  getAnalysisDepth,
+  getAnalysisDepthPolicy,
+  getDepthLabel,
+} from '../llm/analysisDepth';
 
 interface PlanPreviewCardProps {
   plan: SelectionPlan;
   metadata: StudyMetadata;
+  providerConfig: ProviderConfig;
   onAccept: (plan: SelectionPlan) => void;
   onCancel: () => void;
 }
@@ -60,18 +67,39 @@ function rowStateToSelection(row: SelectionRowState): SeriesSelection {
   };
 }
 
-export default function PlanPreviewCard({ plan, metadata, onAccept, onCancel }: PlanPreviewCardProps) {
+export default function PlanPreviewCard({ plan, metadata, providerConfig, onAccept, onCancel }: PlanPreviewCardProps) {
   const [expanded, setExpanded] = useState(true);
+  const [analysisDepth, setAnalysisDepth] = useState<AnalysisDepth>(() => {
+    const defaultDepth = getAnalysisDepth(providerConfig);
+    const policy = getAnalysisDepthPolicy(providerConfig, defaultDepth);
+    return policy.fullEnabled || defaultDepth !== 'full' ? defaultDepth : 'standard';
+  });
   const [rows, setRows] = useState<SelectionRowState[]>(() =>
     plan.selections.map(selectionToRowState),
   );
 
   useEffect(() => {
+    const defaultDepth = plan.analysisDepth ?? getAnalysisDepth(providerConfig);
+    const policy = getAnalysisDepthPolicy(providerConfig, defaultDepth);
+    setAnalysisDepth(policy.fullEnabled || defaultDepth !== 'full' ? defaultDepth : 'standard');
     setRows(plan.selections.map(selectionToRowState));
     setExpanded(true);
-  }, [plan]);
+  }, [plan, providerConfig]);
 
-  const totalSlices = rows.reduce((sum, r) => sum + r.numSlices, 0);
+  const seedSelections = rows.map(rowStateToSelection);
+  const seedTotalSlices = seedSelections.reduce((sum, selection) => sum + estimateSlices(selection), 0);
+  const selectedSeriesTotal = estimateSelectedSeriesTotal(metadata, seedSelections);
+  const policy = getAnalysisDepthPolicy(providerConfig, analysisDepth);
+  const estimatedImages = policy.providerDepth === 'fast'
+    ? Math.min(seedTotalSlices, policy.maxImages)
+    : policy.providerDepth === 'full'
+      ? selectedSeriesTotal
+      : Math.min(selectedSeriesTotal, policy.maxImages);
+  const batchCount = Math.max(1, Math.ceil(Math.max(estimatedImages, 1) / policy.batchSize));
+  const coverageText = `${getDepthLabel(policy.providerDepth)} · ${estimatedImages}/${selectedSeriesTotal || seedTotalSlices} slices · ${batchCount} ${batchCount === 1 ? 'batch' : 'batches'}`;
+  const fullWarning = policy.providerDepth === 'full' && estimatedImages > 120
+    ? 'Full coverage above 120 images can be slow, costly, and may fail on local models.'
+    : policy.warning;
 
   const updateRow = useCallback((idx: number, updates: Partial<SelectionRowState>) => {
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...updates } : r)));
@@ -106,6 +134,7 @@ export default function PlanPreviewCard({ plan, metadata, onAccept, onCancel }: 
       reasoning: plan.reasoning,
       selections,
       totalImages: selections.reduce((sum, s) => sum + estimateSlices(s), 0),
+      analysisDepth: policy.providerDepth,
       targetSeries: primary.seriesNumber,
       sliceRange: primary.sliceRange,
       windowCenter: primary.windowCenter,
@@ -114,7 +143,7 @@ export default function PlanPreviewCard({ plan, metadata, onAccept, onCancel }: 
       samplingParam: primary.samplingParam,
     };
     onAccept(adjustedPlan);
-  }, [rows, plan.reasoning, onAccept]);
+  }, [rows, plan.reasoning, policy.providerDepth, onAccept]);
 
   // Collapsed summary
   const summaryParts = rows.map((r) => {
@@ -135,10 +164,34 @@ export default function PlanPreviewCard({ plan, metadata, onAccept, onCancel }: 
           {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
         </button>
 
-        <span className="text-[11px] text-neutral-300 truncate flex-1 leading-tight">
-          <span className="text-neutral-500">Plan:</span>{' '}
-          {summaryParts.join(' + ')} &middot; {totalSlices} total
+          <span className="text-[11px] text-neutral-300 truncate flex-1 leading-tight">
+            <span className="text-neutral-500">Plan:</span>{' '}
+          {summaryParts.join(' + ')} &middot; {coverageText}
         </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
+        {(['fast', 'standard', 'full'] as AnalysisDepth[]).map((depth) => {
+          const optionPolicy = getAnalysisDepthPolicy(providerConfig, depth);
+          const disabled = depth === 'full' && !optionPolicy.fullEnabled;
+          return (
+            <button
+              key={depth}
+              type="button"
+              onClick={() => !disabled && setAnalysisDepth(depth)}
+              disabled={disabled}
+              title={disabled ? optionPolicy.warning : undefined}
+              className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                analysisDepth === depth && !disabled
+                  ? 'border-blue-400/70 bg-blue-500/20 text-blue-100'
+                  : 'border-neutral-700 bg-neutral-900 text-neutral-400 hover:border-neutral-500 hover:text-neutral-200'
+              } disabled:cursor-not-allowed disabled:opacity-45`}
+            >
+              {getDepthLabel(depth)}
+            </button>
+          );
+        })}
+        <span className="text-[10px] text-neutral-500">{coverageText}</span>
       </div>
 
       {/* Action buttons */}
@@ -154,7 +207,7 @@ export default function PlanPreviewCard({ plan, metadata, onAccept, onCancel }: 
           disabled={rows.length === 0}
           className="flex-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Accept &amp; Analyze ({totalSlices} images)
+          Accept &amp; Analyze ({getDepthLabel(policy.providerDepth)} · {estimatedImages} images)
         </button>
       </div>
 
@@ -255,11 +308,11 @@ export default function PlanPreviewCard({ plan, metadata, onAccept, onCancel }: 
 
           {/* Total count */}
           <div className="flex items-center justify-between pt-1 border-t border-neutral-700/30">
-            <span className={`text-[10px] ${totalSlices > 20 ? 'text-red-400 font-medium' : 'text-neutral-500'}`}>
-              Total: {totalSlices} / 20 images
+            <span className="text-[10px] text-neutral-500">
+              Coverage: {coverageText}
             </span>
-            {totalSlices > 20 && (
-              <span className="text-[10px] text-red-400">Reduce to fit budget</span>
+            {fullWarning && (
+              <span className="text-[10px] text-amber-300">{fullWarning}</span>
             )}
           </div>
         </div>

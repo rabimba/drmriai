@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { StudyMetadata } from '../dicom/types';
 import type {
+  AnalysisDepth,
   AnalysisEvidenceBundle,
   SelectionPlan,
   SeriesSelection,
@@ -11,9 +12,18 @@ import type {
 import { logger } from '../utils/logger';
 import {
   DEFAULT_GEMMA_TRANSFORMERS_EXPORT_LONG_EDGE,
-  DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
   DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
 } from './gemmaTransformersConfig';
+import {
+  distributeBudgetBySeries,
+  estimateSelectionCount,
+  getAnalysisDepth,
+  getAnalysisDepthPolicy,
+  getDepthLabel,
+  getSeriesForSelection,
+  isLocalizerSeries,
+  type AnalysisDepthPolicy,
+} from './analysisDepth';
 import {
   subscribeGemmaTransformersRuntime,
   type GemmaTransformersRuntimeEvent,
@@ -43,6 +53,8 @@ export interface PipelineState {
   plan: SelectionPlan | null;
   sliceCount: number;
   totalSlices: number;
+  analysisDepth?: AnalysisDepth;
+  batchCount: number;
   exportedSizes: string[];
   sliceMappings: SliceMapping[];
 }
@@ -167,23 +179,11 @@ function getProviderLabels(providerConfig: ProviderConfig): { textModel: string;
   };
 }
 
-function getProviderImageBudget(providerConfig: ProviderConfig): number {
-  if (providerConfig.provider === 'gemma-transformers') {
-    return Math.max(1, Math.min(DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES, Math.round(providerConfig.gemmaTransformersMaxImages ?? DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES)));
-  }
-  return 20;
-}
-
 function getProviderExportMaxLongEdge(providerConfig: ProviderConfig): number | undefined {
   if (providerConfig.provider === 'gemma-transformers') {
     return DEFAULT_GEMMA_TRANSFORMERS_EXPORT_LONG_EDGE;
   }
   return undefined;
-}
-
-function isLocalizerSeries(series: StudyMetadata['series'][number] | undefined): boolean {
-  const description = (series?.seriesDescription ?? '').toLowerCase();
-  return /\b(loc|localizer|scout|survey|topogram|pilot)\b/.test(description);
 }
 
 /**
@@ -230,21 +230,7 @@ function fixSelection(sel: SeriesSelection, metadata: StudyMetadata, maxBudget: 
 }
 
 /**
- * Estimate the number of slices a selection will produce.
- */
-function estimateSliceCount(sel: SeriesSelection): number {
-  const rangeSize = sel.sliceRange[1] - sel.sliceRange[0] + 1;
-  if (sel.samplingStrategy === 'uniform' && sel.samplingParam != null) {
-    return Math.min(sel.samplingParam, rangeSize);
-  }
-  if (sel.samplingStrategy === 'every_nth' && sel.samplingParam != null && sel.samplingParam > 0) {
-    return Math.ceil(rangeSize / sel.samplingParam);
-  }
-  return rangeSize;
-}
-
-/**
- * Fix all selections in a plan. Enforce total ≤ 20 (reduce supplementary first).
+ * Fix all selections in a plan. Enforce total ≤ maxTotal (reduce supplementary first).
  * Re-populate legacy fields from selections[0].
  */
 function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal = 20): SelectionPlan {
@@ -269,12 +255,12 @@ function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal
   }
 
   // Enforce total ≤ 20: reduce supplementary series first, then primary
-  let total = fixedSelections.reduce((sum, s) => sum + estimateSliceCount(s), 0);
+  let total = fixedSelections.reduce((sum, s) => sum + estimateSelectionCount(s), 0);
   if (total > MAX_TOTAL) {
     // Reduce supplementary selections first (in reverse order)
     for (let i = fixedSelections.length - 1; i >= 0 && total > MAX_TOTAL; i--) {
       if (fixedSelections[i].role !== 'supplementary') continue;
-      const current = estimateSliceCount(fixedSelections[i]);
+      const current = estimateSelectionCount(fixedSelections[i]);
       const excess = total - MAX_TOTAL;
       const newCount = Math.max(2, current - excess);
       fixedSelections[i] = {
@@ -282,7 +268,7 @@ function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal
         samplingStrategy: 'uniform',
         samplingParam: newCount,
       };
-      total = fixedSelections.reduce((sum, s) => sum + estimateSliceCount(s), 0);
+      total = fixedSelections.reduce((sum, s) => sum + estimateSelectionCount(s), 0);
       logger.warn(`[PlanFix] Reduced supplementary series #${fixedSelections[i].seriesNumber} to ${newCount} slices`);
     }
 
@@ -291,7 +277,7 @@ function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal
       const primaryOnly = fixedSelections.filter((s) => s.role === 'primary');
       if (primaryOnly.length > 0) {
         fixedSelections = primaryOnly;
-        total = fixedSelections.reduce((sum, s) => sum + estimateSliceCount(s), 0);
+        total = fixedSelections.reduce((sum, s) => sum + estimateSelectionCount(s), 0);
         logger.warn('[PlanFix] Removed all supplementary selections to fit budget');
       }
     }
@@ -309,10 +295,18 @@ function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal
 
   // Re-populate legacy fields from selections[0]
   const primary = fixedSelections[0];
+  if (!primary) {
+    return {
+      ...plan,
+      selections: [],
+      totalImages: 0,
+    };
+  }
+
   return {
     ...plan,
     selections: fixedSelections,
-    totalImages: fixedSelections.reduce((sum, s) => sum + estimateSliceCount(s), 0),
+    totalImages: fixedSelections.reduce((sum, s) => sum + estimateSelectionCount(s), 0),
     targetSeries: primary.seriesNumber,
     sliceRange: primary.sliceRange,
     windowCenter: primary.windowCenter,
@@ -320,6 +314,111 @@ function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal
     samplingStrategy: primary.samplingStrategy,
     samplingParam: primary.samplingParam,
   };
+}
+
+function finiteNumber(value: number | undefined, fallback: number): number {
+  return Number.isFinite(value) ? Number(value) : fallback;
+}
+
+function countSelectionAgainstMetadata(metadata: StudyMetadata, selection: SeriesSelection): number {
+  const series = getSeriesForSelection(metadata, selection);
+  if (!series) return estimateSelectionCount(selection);
+  const [start, end] = selection.sliceRange;
+  const inRange = series.slices.filter(
+    (slice) => slice.instanceNumber >= start && slice.instanceNumber <= end,
+  );
+  const available = inRange.length > 0 ? inRange.length : series.slices.length;
+  if (selection.samplingStrategy === 'all') return available;
+  if (selection.samplingStrategy === 'uniform' && selection.samplingParam != null) {
+    return Math.min(Math.max(1, Math.round(selection.samplingParam)), available);
+  }
+  if (
+    selection.samplingStrategy === 'every_nth' &&
+    selection.samplingParam != null &&
+    selection.samplingParam > 0
+  ) {
+    return Math.ceil(available / selection.samplingParam);
+  }
+  return available;
+}
+
+function countSelectionsAgainstMetadata(metadata: StudyMetadata, selections: SeriesSelection[]): number {
+  return selections.reduce((sum, selection) => sum + countSelectionAgainstMetadata(metadata, selection), 0);
+}
+
+function withLegacyPlanFields(
+  plan: SelectionPlan,
+  selections: SeriesSelection[],
+  metadata: StudyMetadata,
+  analysisDepth: AnalysisDepth,
+): SelectionPlan {
+  const primary = selections[0];
+  if (!primary) {
+    return { ...plan, selections, totalImages: 0, analysisDepth };
+  }
+
+  return {
+    ...plan,
+    selections,
+    totalImages: countSelectionsAgainstMetadata(metadata, selections),
+    analysisDepth,
+    targetSeries: primary.seriesNumber,
+    sliceRange: primary.sliceRange,
+    windowCenter: primary.windowCenter,
+    windowWidth: primary.windowWidth,
+    samplingStrategy: primary.samplingStrategy,
+    samplingParam: primary.samplingParam,
+  };
+}
+
+function expandPlanForAnalysisDepth(
+  plan: SelectionPlan,
+  metadata: StudyMetadata,
+  policy: AnalysisDepthPolicy,
+): SelectionPlan {
+  if (policy.providerDepth === 'fast') {
+    const fastPlan = fixSelectionPlan(plan, metadata, policy.maxImages);
+    return { ...fastPlan, analysisDepth: 'fast' };
+  }
+
+  const seedPlan = fixSelectionPlan(plan, metadata, Number.POSITIVE_INFINITY);
+  const diagnosticSelections = seedPlan.selections.filter((selection, index, selections) => {
+    if (selections.findIndex((item) => item.seriesNumber === selection.seriesNumber) !== index) return false;
+    const series = getSeriesForSelection(metadata, selection);
+    return !!series && !isLocalizerSeries(series);
+  });
+
+  if (diagnosticSelections.length === 0) {
+    return { ...seedPlan, analysisDepth: policy.providerDepth };
+  }
+
+  const allocation = policy.providerDepth === 'standard'
+    ? distributeBudgetBySeries(metadata, diagnosticSelections, policy.maxImages)
+    : new Map<string, number>();
+
+  const expandedSelections: SeriesSelection[] = diagnosticSelections.map((selection, index): SeriesSelection => {
+    const series = getSeriesForSelection(metadata, selection);
+    if (!series) return selection;
+
+    const [minInst, maxInst] = series.instanceNumberRange;
+    const available = series.slices.length;
+    const budget = policy.providerDepth === 'full'
+      ? available
+      : Math.max(1, allocation.get(selection.seriesNumber) ?? Math.min(available, policy.maxImages));
+    const useAll = budget >= available;
+
+    return {
+      ...selection,
+      role: index === 0 ? 'primary' : 'supplementary',
+      sliceRange: [minInst, maxInst] as [number, number],
+      samplingStrategy: useAll ? 'all' : 'uniform',
+      samplingParam: useAll ? undefined : budget,
+      windowCenter: finiteNumber(selection.windowCenter, series.windowCenter ?? 40),
+      windowWidth: Math.max(1, finiteNumber(selection.windowWidth, series.windowWidth ?? 400)),
+    };
+  });
+
+  return withLegacyPlanFields(seedPlan, expandedSelections, metadata, policy.providerDepth);
 }
 
 export function useLLMChat(
@@ -382,7 +481,16 @@ export function useLLMChat(
       { id: 'export', label: 'Exporting images', status: 'pending' },
       { id: 'analyze', label: `Analyzing images (${visionModel})`, status: 'pending' },
     ];
-    setPipeline({ steps: initialSteps, plan: null, sliceCount: 0, totalSlices: 0, exportedSizes: [], sliceMappings: [] });
+    setPipeline({
+      steps: initialSteps,
+      plan: null,
+      sliceCount: 0,
+      totalSlices: 0,
+      analysisDepth: getAnalysisDepth(providerConfig),
+      batchCount: 0,
+      exportedSizes: [],
+      sliceMappings: [],
+    });
 
     const userMsg: ChatMessage = {
       id: makeId(),
@@ -428,7 +536,10 @@ export function useLLMChat(
       if (abortRef.current) { logger.groupEnd(); return; }
 
       logger.log('Call 1 — Raw plan:', rawPlan);
-      const plan = fixSelectionPlan(rawPlan, metadata, getProviderImageBudget(providerConfig));
+      const plan = {
+        ...fixSelectionPlan(rawPlan, metadata, 20),
+        analysisDepth: getAnalysisDepth(providerConfig),
+      };
       if (plan.sliceRange[0] !== rawPlan.sliceRange[0] || plan.sliceRange[1] !== rawPlan.sliceRange[1]) {
         logger.log('Plan fixed:', `[${rawPlan.sliceRange}] → [${plan.sliceRange}]`);
       }
@@ -474,7 +585,11 @@ export function useLLMChat(
 
     const hint = hintRef.current;
 
-    const executionPlan = fixSelectionPlan(adjustedPlan, metadata, getProviderImageBudget(providerConfig));
+    const policy = getAnalysisDepthPolicy(
+      providerConfig,
+      adjustedPlan.analysisDepth ?? getAnalysisDepth(providerConfig),
+    );
+    const executionPlan = expandPlanForAnalysisDepth(adjustedPlan, metadata, policy);
 
     // Update plan and pipeline with adjusted values
     setCurrentPlan(executionPlan);
@@ -482,6 +597,7 @@ export function useLLMChat(
     setPipeline((p) => p && ({
       ...p,
       plan: executionPlan,
+      analysisDepth: executionPlan.analysisDepth,
       steps: updateStep(p.steps, 'plan', {
         status: 'done',
         detail: planDetail,
@@ -521,7 +637,11 @@ export function useLLMChat(
       const t2 = performance.now();
 
       for (const sel of executionPlan.selections) {
-        const selectedSlices = selectSlicesForSelection(metadata, sel);
+        const selectedSlices = selectSlicesForSelection(metadata, sel, {
+          maxSlices: policy.providerDepth === 'full'
+            ? Number.POSITIVE_INFINITY
+            : countSelectionAgainstMetadata(metadata, sel),
+        });
         logger.log(`[${sel.role}] Series #${sel.seriesNumber}: selected ${selectedSlices.length} slices`);
 
         if (selectedSlices.length === 0) continue;
@@ -584,11 +704,19 @@ export function useLLMChat(
 
       const sizes = allBlobs.map((b) => `${(b.size / 1024).toFixed(0)}KB`);
       const totalSize = allBlobs.reduce((sum, b) => sum + b.size, 0);
+      const batchCount = Math.max(1, Math.ceil(allBlobs.length / policy.batchSize));
+      const coverageDetail = `${getDepthLabel(executionPlan.analysisDepth ?? policy.providerDepth)} · ${allBlobs.length}/${grandTotalSlices} slices · ${batchCount} ${batchCount === 1 ? 'batch' : 'batches'}`;
+      if ((executionPlan.analysisDepth ?? policy.providerDepth) === 'full' && allBlobs.length > 120) {
+        logger.warn('[Coverage] Full mode exceeds 120 images; expect slower runtime, higher hosted-model cost, and possible local-model failures.');
+      }
       logger.log(`Exported ${allBlobs.length} JPEG images (sizes: ${sizes.join(', ')})`);
       logger.log('Slice mappings:', allMappings.map((m) => m.label));
+      logger.log('Coverage:', coverageDetail);
 
       setPipeline((p) => p && ({
         ...p,
+        analysisDepth: executionPlan.analysisDepth ?? policy.providerDepth,
+        batchCount,
         exportedSizes: sizes,
         sliceMappings: allMappings,
         steps: updateStep(p.steps, 'export', {
@@ -603,7 +731,7 @@ export function useLLMChat(
       const t4 = performance.now();
       setPipeline((p) => p && ({
         ...p,
-        steps: updateStep(p.steps, 'analyze', { status: 'active', detail: `Sending ${allBlobs.length} images to LLM...` }),
+        steps: updateStep(p.steps, 'analyze', { status: 'active', detail: `Coverage: ${coverageDetail}` }),
       }));
 
       const sliceLabels = allMappings.map((m) => m.label);
@@ -611,7 +739,18 @@ export function useLLMChat(
       const unsubscribeGemmaStatus = attachGemmaRuntimeStatus('analyze');
       let analysisText: string;
       try {
-        analysisText = await service.analyzeSlices(allBlobs, metadata, hint, executionPlan, sliceLabels, surveyModeRef.current);
+        analysisText = await service.analyzeSlices(
+          allBlobs,
+          metadata,
+          hint,
+          executionPlan,
+          sliceLabels,
+          surveyModeRef.current,
+          {
+            batchSize: policy.batchSize,
+            analysisDepth: executionPlan.analysisDepth ?? policy.providerDepth,
+          },
+        );
       } finally {
         unsubscribeGemmaStatus();
       }
@@ -625,7 +764,7 @@ export function useLLMChat(
         ...p,
         steps: updateStep(p.steps, 'analyze', {
           status: 'done',
-          detail: `Response received`,
+          detail: `Response received · ${coverageDetail}`,
           durationMs: Math.round(t5 - t4),
         }),
       }));
@@ -641,6 +780,8 @@ export function useLLMChat(
         createdAt: assistantMsg.timestamp,
         prompt: hint,
         plan: executionPlan,
+        analysisDepth: executionPlan.analysisDepth ?? policy.providerDepth,
+        batchCount,
         surveyMode: surveyModeRef.current,
         images: allMappings.map((mapping, index) => ({
           fileName: toEvidenceFileName(mapping.seriesNumber, mapping.instanceNumber, index + 1),

@@ -119,21 +119,22 @@ export function buildSelectionSystemPrompt(): string {
     '- For axial views: Select the range covering the anatomical region of interest',
     '- For spine sagittal: Select slices centered on the relevant vertebral levels',
     '',
-    'A focused range of 10-15 slices through the relevant anatomy is BETTER than',
-    '40 slices covering the entire field of view. The vision model analyzes each',
-    'image — sending irrelevant slices dilutes the analysis quality.',
+    'For this planning call, choose focused seed ranges that identify the right',
+    'diagnostic series and anatomy. The app may later expand those selected',
+    'diagnostic series to Standard or Full coverage based on the user setting.',
     '',
     'If you\'re unsure of the exact range, select the middle 50-70% of the series',
     'rather than the full range.',
     '',
     '## OUTPUT CONSTRAINTS (MANDATORY)',
     '',
-    '- You may select 1 PRIMARY series (8-12 slices) and 0-2 SUPPLEMENTARY series (3-5 slices each)',
-    '- The total across ALL series MUST be ≤ 20 slices',
-    '- If a range contains more slices than the budget, use a sampling strategy to reduce',
+    '- You may select 1 PRIMARY diagnostic series and 0-2 SUPPLEMENTARY diagnostic series',
+    '- For the seed plan, target 8-12 primary slices and 3-5 supplementary slices each',
+    '- The seed plan total across ALL series MUST be ≤ 20 slices',
+    '- If a seed range contains more slices than the seed budget, use a sampling strategy to reduce',
     '- The samplingParam in "uniform" mode means "select exactly this many slices',
     '  evenly spaced across the range"',
-    '- NEVER set samplingStrategy to "all" if the range exceeds the per-series budget',
+    '- NEVER set samplingStrategy to "all" if the seed range exceeds the per-series seed budget',
     '- Scout / localizer series (very few slices, large spacing) should NEVER be selected',
     '- Only add supplementary series when they provide genuinely different diagnostic',
     '  information (different plane, different weighting, different phase)',
@@ -151,7 +152,7 @@ export function buildSelectionSystemPrompt(): string {
     '    - samplingParam: number — for "uniform": exact count. For "every_nth": step size. Omit for "all".',
     '    - windowCenter: number',
     '    - windowWidth: number',
-    '- totalImages: number — sum of all slices across selections (must be ≤ 20)',
+    '- totalImages: number — sum of seed slices across selections (must be ≤ 20)',
     '',
     'The first element in selections MUST be the primary series (role: "primary").',
     'Output ONLY the JSON object, no other text.',
@@ -375,7 +376,11 @@ export function buildAnalysisUserPrompt(
 
   lines.push(`Selection reasoning: ${plan.reasoning}`);
   lines.push('');
-  lines.push(`IMPORTANT CONTEXT: You are viewing ${sliceLabels.length} sampled slices from ${plan.selections.length} series. There are gaps between the images you see. A finding visible in one image may span more slices than shown. Account for this sampling when describing extent and when noting limitations.`);
+  if (plan.analysisDepth === 'full') {
+    lines.push(`IMPORTANT CONTEXT: You are viewing full selected-series coverage (${sliceLabels.length} slices from ${plan.selections.length} series). Findings are still limited to the selected diagnostic series and image quality.`);
+  } else {
+    lines.push(`IMPORTANT CONTEXT: You are viewing ${sliceLabels.length} sampled slices from ${plan.selections.length} series. There are gaps between the images you see. A finding visible in one image may span more slices than shown. Account for this sampling when describing extent and when noting limitations.`);
+  }
   if (plan.selections.length > 1) {
     lines.push('Cross-reference findings across series when possible (e.g., confirm a sagittal finding on coronal images).');
   }

@@ -20,6 +20,7 @@ import {
   DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
   DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
 } from './llm/gemmaTransformersConfig';
+import { DEFAULT_ANALYSIS_DEPTH } from './llm/analysisDepth';
 import { DEFAULT_OLLAMA_URL, normalizeOllamaBaseUrl } from './llm/ollamaConfig';
 import { useLLMChat, type SliceMapping } from './llm/useLLMChat';
 import { logger } from './utils/logger';
@@ -43,6 +44,7 @@ function getDefaultProviderConfig(): ProviderConfig {
     openAiCompatibleApiKey: '',
     openAiCompatibleTextModel: '',
     openAiCompatibleVisionModel: '',
+    analysisDepth: DEFAULT_ANALYSIS_DEPTH,
     gemmaTransformersModelId: DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
     gemmaTransformersDtype: DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
     gemmaTransformersMaxImages: DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
@@ -63,6 +65,9 @@ function loadConfig(): ProviderConfig {
       }
       if (savedProvider === REMOVED_MEDIAPIPE_PROVIDER) {
         merged.provider = 'gemma-transformers';
+      }
+      if (!['fast', 'standard', 'full'].includes(String(merged.analysisDepth))) {
+        merged.analysisDepth = DEFAULT_ANALYSIS_DEPTH;
       }
       if (
         merged.provider === 'ollama' &&
@@ -585,8 +590,11 @@ export default function App() {
       analysisId: latestEvidenceBundle.analysisId,
       createdAt: new Date(latestEvidenceBundle.createdAt).toISOString(),
       prompt: latestEvidenceBundle.prompt,
+      analysisDepth: latestEvidenceBundle.analysisDepth,
+      batchCount: latestEvidenceBundle.batchCount,
       surveyMode: latestEvidenceBundle.surveyMode,
       plan: latestEvidenceBundle.plan,
+      sliceLabels: latestEvidenceBundle.images.map((image) => image.label),
       images: latestEvidenceBundle.images.map((image, index) => ({
         order: index + 1,
         fileName: image.fileName,
@@ -903,6 +911,7 @@ export default function App() {
                   pipeline={pipeline}
                   currentPlan={currentPlan}
                   studyMetadata={studyMetadata}
+                  providerConfig={providerConfig}
                   onConfirmPlan={confirmPlan}
                   onCancelPlan={cancelPlan}
                   onStartAnalysis={handleStartAnalysis}

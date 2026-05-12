@@ -3,7 +3,7 @@ import type { SelectionPlan, SeriesSelection } from '../llm/types';
 import type { SelectedSlice } from './types';
 import { logger } from '../utils/logger';
 
-const MAX_SLICES = 20;
+const DEFAULT_MAX_SLICES = 20;
 
 /**
  * Returns the imagePositionPatient index that varies between slices for a given plane.
@@ -25,34 +25,44 @@ interface SamplingParams {
   samplingParam?: number;
 }
 
+interface SelectionOptions {
+  maxSlices?: number;
+}
+
 /**
  * Select slices for a single SeriesSelection.
  */
 export function selectSlicesForSelection(
   metadata: StudyMetadata,
   selection: SeriesSelection,
+  options: SelectionOptions = {},
 ): SelectedSlice[] {
   const series = metadata.series.find((s) => String(s.seriesNumber) === selection.seriesNumber);
   if (!series) return [];
-  return selectFromSeries(series, selection);
+  return selectFromSeries(series, selection, options.maxSlices);
 }
 
 /**
  * Legacy entry point — selects slices using plan.targetSeries / plan.sliceRange (selections[0]).
  */
-export function selectSlices(metadata: StudyMetadata, plan: SelectionPlan): SelectedSlice[] {
+export function selectSlices(
+  metadata: StudyMetadata,
+  plan: SelectionPlan,
+  options: SelectionOptions = {},
+): SelectedSlice[] {
   const series = metadata.series.find((s) => String(s.seriesNumber) === plan.targetSeries);
   if (!series) {
     const primary = metadata.series.find((s) => s.seriesInstanceUID === metadata.primarySeriesUID);
     if (!primary) return [];
-    return selectFromSeries(primary, plan);
+    return selectFromSeries(primary, plan, options.maxSlices);
   }
-  return selectFromSeries(series, plan);
+  return selectFromSeries(series, plan, options.maxSlices);
 }
 
 function selectFromSeries(
   series: SeriesMetadata,
   params: SamplingParams,
+  maxSlices: number = DEFAULT_MAX_SLICES,
 ): SelectedSlice[] {
   const [rangeStart, rangeEnd] = params.sliceRange;
   const axisIdx = varyingAxisIndex(series.anatomicalPlane);
@@ -64,14 +74,14 @@ function selectFromSeries(
   const slicesToSample = inRange.length === 0 ? [...series.slices] : inRange;
   slicesToSample.sort((a, b) => a.instanceNumber - b.instanceNumber);
 
-  return applyStrategy(slicesToSample, params, axisIdx);
+  return applyStrategy(slicesToSample, params, axisIdx, maxSlices);
 }
 
 function applyStrategy(
   slices: import('../dicom/types').SliceMetadata[],
   params: SamplingParams,
   axisIdx: number,
-  maxSlices: number = MAX_SLICES,
+  maxSlices: number = DEFAULT_MAX_SLICES,
 ): SelectedSlice[] {
   if (slices.length === 0) return [];
 
@@ -108,15 +118,20 @@ function applyStrategy(
       selected = [...slices];
   }
 
-  // Hard cap — re-sample uniformly if over
-  if (selected.length > maxSlices) {
+  // Explicit cap — re-sample uniformly if requested.
+  if (Number.isFinite(maxSlices) && selected.length > maxSlices) {
     logger.warn(`[SliceSelector] Hard cap: ${selected.length} slices → resampling to ${maxSlices}`);
-    const resampled: typeof selected = [];
-    for (let i = 0; i < maxSlices; i++) {
-      const idx = Math.round((i * (selected.length - 1)) / (maxSlices - 1));
-      resampled.push(selected[idx]);
+    if (maxSlices <= 1) {
+      const midpoint = selected[Math.floor((selected.length - 1) / 2)];
+      selected = midpoint ? [midpoint] : [];
+    } else {
+      const resampled: typeof selected = [];
+      for (let i = 0; i < maxSlices; i++) {
+        const idx = Math.round((i * (selected.length - 1)) / (maxSlices - 1));
+        resampled.push(selected[idx]);
+      }
+      selected = resampled;
     }
-    selected = resampled;
   }
 
   return selected.map((s) => ({

@@ -1,5 +1,7 @@
 import type { StudyMetadata } from '../dicom/types';
 
+export type AnalysisDepth = 'fast' | 'standard' | 'full';
+
 export interface SeriesSelection {
   seriesNumber: string;
   role: 'primary' | 'supplementary';
@@ -15,6 +17,7 @@ export interface SelectionPlan {
   reasoning: string;
   selections: SeriesSelection[];
   totalImages: number;
+  analysisDepth?: AnalysisDepth;
   // Legacy shortcuts from selections[0] — used by App.tsx viewport logic
   targetSeries: string;
   sliceRange: [number, number];
@@ -67,6 +70,8 @@ export interface AnalysisEvidenceBundle {
   createdAt: number;
   prompt: string;
   plan: SelectionPlan;
+  analysisDepth: AnalysisDepth;
+  batchCount: number;
   surveyMode: boolean;
   images: AnalysisEvidenceImage[];
 }
@@ -84,6 +89,7 @@ export interface ProviderConfig {
   openAiCompatibleApiKey?: string;  // OpenAI-compatible bearer token
   openAiCompatibleTextModel?: string; // OpenAI-compatible model for Call 1 + follow-ups
   openAiCompatibleVisionModel?: string; // OpenAI-compatible model for Call 2 image analysis
+  analysisDepth?: AnalysisDepth; // default image coverage depth
   gemmaTransformersModelId?: string; // Transformers.js model repo or local model path
   gemmaTransformersDtype?: string;   // Transformers.js dtype, e.g. q4f16
   gemmaTransformersMaxImages?: number; // Browser-local image budget
@@ -106,6 +112,7 @@ export interface LLMService {
     plan: SelectionPlan,
     sliceLabels: string[],
     surveyMode?: boolean,
+    options?: { batchSize?: number; analysisDepth?: AnalysisDepth },
   ): Promise<string>;
   sendFollowUp(
     conversationHistory: ChatMessage[],

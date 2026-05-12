@@ -16,7 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import type { ChatMessage, SavedAnalysisRecord, SelectionPlan } from '../llm/types';
+import type { ChatMessage, ProviderConfig, SavedAnalysisRecord, SelectionPlan } from '../llm/types';
 import type { StudyMetadata } from '../dicom/types';
 import type { ChatStatus, PipelineState, SliceMapping } from '../llm/useLLMChat';
 import { detectBodyPart, getChecklist, buildSurveyHint } from '../llm/anatomyChecklists';
@@ -36,6 +36,7 @@ interface ChatSidebarProps {
   pipeline: PipelineState | null;
   currentPlan: SelectionPlan | null;
   studyMetadata: StudyMetadata | null;
+  providerConfig: ProviderConfig;
   onConfirmPlan: (plan: SelectionPlan) => void;
   onCancelPlan: () => void;
   onStartAnalysis: (hint: string, options?: { surveyMode?: boolean }) => void;
@@ -59,6 +60,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
   pipeline,
   currentPlan,
   studyMetadata,
+  providerConfig,
   onConfirmPlan,
   onCancelPlan,
   onStartAnalysis,
@@ -299,6 +301,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
             <PlanPreviewCard
               plan={currentPlan}
               metadata={studyMetadata}
+              providerConfig={providerConfig}
               onAccept={onConfirmPlan}
               onCancel={onCancelPlan}
             />
