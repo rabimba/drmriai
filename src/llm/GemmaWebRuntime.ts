@@ -16,6 +16,14 @@ export {
 } from './gemmaWebConfig';
 
 type PromptPart = string | HTMLImageElement;
+type WebGpuCompatAdapter = Record<string, unknown> & {
+  info?: unknown;
+  requestAdapterInfo?: unknown;
+  requestDevice?: (...requestArgs: unknown[]) => Promise<Record<string, unknown>>;
+};
+type WebGpuCompat = {
+  requestAdapter?: (...args: unknown[]) => Promise<WebGpuCompatAdapter | null>;
+};
 
 interface GenAiFilesetResolver {
   forGenAiTasks(wasmRoot: string): Promise<unknown>;
@@ -56,11 +64,7 @@ function ensureWebGpuAdapterInfoCompatibility() {
     return;
   }
 
-  const gpu = (navigator as Navigator & {
-    gpu?: {
-      requestAdapter?: (...args: unknown[]) => Promise<Record<string, unknown> | null>;
-    };
-  }).gpu;
+  const gpu = (navigator as unknown as { gpu?: WebGpuCompat }).gpu;
 
   if (!gpu?.requestAdapter) return;
 
@@ -69,16 +73,14 @@ function ensureWebGpuAdapterInfoCompatibility() {
     const adapter = await originalRequestAdapter(...args);
     if (!adapter) return adapter;
 
-    if (typeof (adapter as { requestAdapterInfo?: unknown }).requestAdapterInfo !== 'function') {
+    if (typeof adapter.requestAdapterInfo !== 'function') {
       Object.defineProperty(adapter, 'requestAdapterInfo', {
         configurable: true,
-        value: async () => (adapter as { info?: unknown }).info ?? {},
+        value: async () => adapter.info ?? {},
       });
     }
 
-    const requestDevice = (adapter as {
-      requestDevice?: (...requestArgs: unknown[]) => Promise<Record<string, unknown>>;
-    }).requestDevice;
+    const requestDevice = adapter.requestDevice;
 
     if (typeof requestDevice === 'function') {
       const originalRequestDevice = requestDevice.bind(adapter);
@@ -90,7 +92,7 @@ function ensureWebGpuAdapterInfoCompatibility() {
               Object.defineProperty(device, 'adapterInfo', {
                 configurable: true,
                 writable: true,
-                value: (adapter as { info?: unknown }).info ?? {},
+                value: adapter.info ?? {},
               });
             } catch {
               // Some engines may reject redefining platform properties. In that case
