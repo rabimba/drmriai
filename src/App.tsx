@@ -835,9 +835,9 @@ export default function App() {
         </Suspense>
       </div>
 
-      <div className="flex-1 min-h-0 p-4">
-        <div className={`grid h-full min-h-0 gap-4 ${showChat ? 'lg:grid-cols-[minmax(0,0.94fr)_minmax(32rem,1.06fr)] xl:grid-cols-[minmax(0,0.82fr)_minmax(42rem,1.18fr)] 2xl:grid-cols-[minmax(0,0.72fr)_minmax(48rem,1.28fr)]' : 'grid-cols-1'}`}>
-          <div className="min-h-0 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,14,24,0.92),rgba(6,9,17,0.86))] shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+      <div className="min-h-0 flex-1 p-2 sm:p-4">
+        <div className={`grid h-full min-h-0 gap-3 sm:gap-4 ${showChat ? 'grid-cols-1 grid-rows-[minmax(10rem,36%)_minmax(0,1fr)] md:grid-rows-[minmax(14rem,42%)_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[minmax(0,0.94fr)_minmax(32rem,1.06fr)] xl:grid-cols-[minmax(0,0.82fr)_minmax(42rem,1.18fr)] 2xl:grid-cols-[minmax(0,0.72fr)_minmax(48rem,1.28fr)]' : 'grid-cols-1'}`}>
+          <div className="min-h-0 overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,14,24,0.92),rgba(6,9,17,0.86))] shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:rounded-[28px]">
             <div className="flex h-full min-h-0">
               {showSeriesBrowser && studyMetadata && studyMetadata.series.length > 1 && (
                 <Suspense fallback={<SuspenseFallback label="Loading series browser..." className="flex w-72 items-center justify-center border-r border-white/8 text-sm text-white/55" />}>
@@ -892,7 +892,7 @@ export default function App() {
           </div>
 
           {showChat && (
-            <div className="min-h-0 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,28,0.96),rgba(7,10,17,0.96))] shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+            <div className="min-h-0 overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,28,0.96),rgba(7,10,17,0.96))] shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:rounded-[28px]">
               <Suspense fallback={<SuspenseFallback label="Loading analysis console..." className="flex h-full items-center justify-center text-sm text-white/60" />}>
                 <ChatSidebar
                   ref={chatSidebarRef}

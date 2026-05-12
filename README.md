@@ -65,6 +65,20 @@ VITE_OPENAI_COMPAT_PROXY_TARGET=https://your-gateway.example.com/v1 npm run dev
 
 Then use `/openai-compatible-proxy` as the OpenAI-compatible endpoint in Settings. GitHub Pages cannot run this proxy; hosted static deployments need the upstream gateway to expose CORS or a separate serverless proxy.
 
+If you are using the GitHub Pages app against a gateway that does not expose CORS, run the local proxy helper on the machine where your browser can reach the gateway:
+
+```bash
+npm run openai-proxy -- --target https://your-gateway.example.com/v1
+```
+
+Then open the Pages app and use this Settings value:
+
+```text
+OpenAI-Compatible endpoint: http://localhost:8787
+```
+
+The API key is still entered in the browser at runtime and forwarded through the local proxy; it is not stored in the proxy script.
+
 The default provider is **Ollama** for a more stable local workflow. **Gemma 4 Browser** is available for fully browser-local analysis through Transformers.js + WebGPU:
 
 - **Model**: `onnx-community/gemma-4-E2B-it-ONNX`

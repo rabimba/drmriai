@@ -571,7 +571,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                   </p>
                 )}
                 <p className="mt-1.5 text-[10px] text-neutral-500">
-                  For local CORS workarounds, run Vite with `VITE_OPENAI_COMPAT_PROXY_TARGET` and use endpoint `/openai-compatible-proxy`.
+                  For GitHub Pages CORS workarounds, run `npm run openai-proxy -- --target ...` and use endpoint `http://localhost:8787`.
                 </p>
               </div>
             </>

@@ -298,7 +298,7 @@ function formatOpenAiCompatibleNetworkError(baseUrl: string): string {
     `Cannot connect to OpenAI-compatible endpoint at ${baseUrl}. ` +
     'If this endpoint works with curl but fails in the browser, it is probably missing CORS headers. ' +
     `Allow Origin ${origin}, methods GET/POST/OPTIONS, and headers Authorization, Content-Type; ` +
-    'or use a same-origin proxy.'
+    'or use a CORS-enabled proxy such as the local npm run openai-proxy helper.'
   );
 }
 

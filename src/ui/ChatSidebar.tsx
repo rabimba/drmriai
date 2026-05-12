@@ -13,6 +13,8 @@ import {
   Save,
   FileJson,
   Archive,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import type { ChatMessage, SavedAnalysisRecord, SelectionPlan } from '../llm/types';
 import type { StudyMetadata } from '../dicom/types';
@@ -73,6 +75,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
 }, ref) {
   const [input, setInput] = useState('');
   const [surveyActive, setSurveyActive] = useState(false);
+  const [showDeeperPrompts, setShowDeeperPrompts] = useState(false);
   const [selectedStructures, setSelectedStructures] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -87,6 +90,10 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
   const deeperPrompts = useMemo(() => getDeepDivePrompts(detectedBodyPart), [detectedBodyPart]);
   const latestAssistantIndex = findLastMessageIndex(messages, 'assistant');
   const latestAssistant = latestAssistantIndex >= 0 ? messages[latestAssistantIndex] : null;
+
+  useEffect(() => {
+    setShowDeeperPrompts(false);
+  }, [latestAssistant?.id]);
 
   useEffect(() => {
     setSelectedStructures(
@@ -132,13 +139,13 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      <div className="border-b border-white/10 px-6 py-5">
-        <div className="flex items-start justify-between gap-4">
+      <div className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.24em] text-amber-200/60">
               Dr.MRI.AI
             </div>
-            <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">
+            <h2 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-white sm:text-xl">
               {latestAssistant ? 'Interrogate the report and keep the evidence close.' : 'Start the AI read with one focused clinical question.'}
             </h2>
             <p className="mt-2 text-sm leading-6 text-white/60">
@@ -147,38 +154,46 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
                 : 'Load a study, ask what matters clinically, and let Dr.MRI.AI plan the evidence set before analyzing it.'}
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end xl:max-w-[26rem]">
             <button
               onClick={onSaveLatest}
+              title="Save latest analysis"
+              aria-label="Save latest analysis"
               disabled={!latestAssistant}
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <Save className="h-3.5 w-3.5" />
-              Save
+              <span className="hidden sm:inline">Save</span>
             </button>
             <button
               onClick={() => onDownloadLatest('md')}
+              title="Export markdown"
+              aria-label="Export markdown"
               disabled={!latestAssistant}
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <Download className="h-3.5 w-3.5" />
-              Export MD
+              <span className="hidden sm:inline">Export MD</span>
             </button>
             <button
               onClick={() => onDownloadLatest('json')}
+              title="Export JSON"
+              aria-label="Export JSON"
               disabled={!latestAssistant}
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <FileJson className="h-3.5 w-3.5" />
-              Export JSON
+              <span className="hidden sm:inline">Export JSON</span>
             </button>
             <button
               onClick={onDownloadEvidenceBundle}
+              title="Download evidence ZIP"
+              aria-label="Download evidence ZIP"
               disabled={!hasEvidenceBundle}
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <Archive className="h-3.5 w-3.5" />
-              Evidence ZIP
+              <span className="hidden sm:inline">Evidence ZIP</span>
             </button>
             {messages.length > 0 && (
               <button
@@ -199,7 +214,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         {savedAnalyses.length > 0 && (
           <div className="mb-5">
             <SavedResultsShelf records={savedAnalyses} onDownload={onDownloadSaved} />
@@ -270,8 +285,6 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
                     sliceMappings={pipeline?.sliceMappings ?? []}
                     onNavigateToSlice={onNavigateToSlice}
                     onDownloadLatest={isLatestAssistant ? onDownloadLatest : undefined}
-                    onUsePrompt={isLatestAssistant ? sendPrompt : undefined}
-                    deeperPrompts={isLatestAssistant ? deeperPrompts : []}
                   />
                 )}
 
@@ -301,7 +314,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
       </div>
 
       {error && (
-        <div className="mx-6 mb-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-xs text-red-100/90">
+        <div className="mx-4 mb-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-xs text-red-100/90 sm:mx-6">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
@@ -309,31 +322,37 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
         </div>
       )}
 
-      <div className="border-t border-white/10 bg-black/15 px-6 pb-6 pt-5 backdrop-blur-md">
-        {(messages.length > 0 || latestAssistant) && (
-          <PromptStrip title="Go deeper" prompts={deeperPrompts} onSelect={sendPrompt} disabled={busy} />
+      <div className="shrink-0 border-t border-white/10 bg-black/15 px-4 pb-4 pt-3 backdrop-blur-md sm:px-6">
+        {latestAssistant && (
+          <CompactPromptTray
+            prompts={deeperPrompts}
+            onSelect={sendPrompt}
+            disabled={busy}
+            expanded={showDeeperPrompts}
+            onToggle={() => setShowDeeperPrompts((value) => !value)}
+          />
         )}
 
-        <div className="mt-4 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
+        <div className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 sm:rounded-[24px] sm:p-4">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            rows={messages.length > 0 ? 6 : 7}
+            rows={messages.length > 0 ? 2 : 3}
             placeholder={messages.length > 0 ? 'Challenge a finding, ask for differentials, or request more uncertainty.' : 'Describe what the model should evaluate and why it matters.'}
             disabled={busy}
-            className="w-full resize-none bg-transparent text-sm leading-6 text-white placeholder:text-white/35 outline-none disabled:opacity-50"
+            className="max-h-28 min-h-12 w-full resize-none bg-transparent text-sm leading-6 text-white placeholder:text-white/35 outline-none disabled:opacity-50"
           />
 
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="hidden text-[11px] uppercase tracking-[0.2em] text-white/35 sm:block">
               {messages.length > 0 ? 'Follow-ups reuse the full conversation context' : 'Start with one precise diagnostic question'}
             </p>
             <button
               onClick={handleSend}
               disabled={busy || !input.trim()}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-teal-300 px-4 py-2 text-sm font-medium text-slate-950 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35"
+              className="ml-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-teal-300 px-4 py-2 text-sm font-medium text-slate-950 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <Send className="h-4 w-4" />
               Send
@@ -510,15 +529,11 @@ function AssistantCard({
   sliceMappings,
   onNavigateToSlice,
   onDownloadLatest,
-  onUsePrompt,
-  deeperPrompts,
 }: {
   content: string;
   sliceMappings: SliceMapping[];
   onNavigateToSlice: (mapping: SliceMapping) => void;
   onDownloadLatest?: (format?: 'md' | 'json') => void;
-  onUsePrompt?: (prompt: string) => void;
-  deeperPrompts: string[];
 }) {
   return (
     <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
@@ -542,21 +557,51 @@ function AssistantCard({
           onNavigate={onNavigateToSlice}
         />
       </div>
+    </div>
+  );
+}
 
-      {onUsePrompt && deeperPrompts.length > 0 && (
-        <div className="mt-4 border-t border-white/8 pt-4">
-          <div className="mb-2 text-[11px] uppercase tracking-[0.22em] text-white/35">
-            Go deeper
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {deeperPrompts.map((prompt) => (
+function CompactPromptTray({
+  prompts,
+  onSelect,
+  disabled,
+  expanded,
+  onToggle,
+}: {
+  prompts: string[];
+  onSelect: (prompt: string) => void;
+  disabled: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  if (prompts.length === 0) return null;
+
+  return (
+    <div className="mb-2 rounded-2xl border border-white/8 bg-white/[0.025] px-3 py-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 text-left text-[11px] uppercase tracking-[0.22em] text-white/45 transition-colors hover:text-white/70"
+      >
+        <MessageSquare className="h-4 w-4" />
+        <span>Go deeper</span>
+        <span className="ml-auto rounded-full border border-white/10 px-2 py-0.5 text-[10px] tracking-normal text-white/35">
+          {prompts.length}
+        </span>
+        {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+      </button>
+      {expanded && (
+        <div className="mt-2 max-h-24 overflow-y-auto pr-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+            {prompts.map((prompt) => (
               <button
                 key={prompt}
-                onClick={() => onUsePrompt(prompt)}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-3 py-2 text-left text-xs text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+                onClick={() => onSelect(prompt)}
+                disabled={disabled}
+                className="inline-flex max-w-full shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/15 px-3 py-1.5 text-left text-xs text-white/70 transition-colors hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:shrink"
               >
                 <ArrowRight className="h-3.5 w-3.5 shrink-0 text-amber-200/70" />
-                <span>{prompt}</span>
+                <span className="truncate sm:whitespace-normal">{prompt}</span>
               </button>
             ))}
           </div>

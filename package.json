@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "openai-proxy": "node scripts/openai-compatible-proxy.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
