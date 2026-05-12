@@ -78,7 +78,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
   const [showDeeperPrompts, setShowDeeperPrompts] = useState(false);
   const [selectedStructures, setSelectedStructures] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const busy = status !== 'idle' && status !== 'error' && status !== 'awaiting-confirmation';
 
   const detectedBodyPart = useMemo(
@@ -130,7 +130,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
     sendPrompt(input);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -322,7 +322,7 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
         </div>
       )}
 
-      <div className="shrink-0 border-t border-white/10 bg-black/15 px-4 pb-4 pt-3 backdrop-blur-md sm:px-6">
+      <div className="shrink-0 border-t border-white/10 bg-black/15 px-3 py-2 backdrop-blur-md sm:px-5">
         {latestAssistant && (
           <CompactPromptTray
             prompts={deeperPrompts}
@@ -333,29 +333,24 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
           />
         )}
 
-        <div className="flex items-end gap-3 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3 py-2">
-          <textarea
+        <div className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3">
+          <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            rows={1}
             placeholder={messages.length > 0 ? 'Challenge a finding, ask for differentials, or request more uncertainty.' : 'Describe what the model should evaluate and why it matters.'}
             disabled={busy}
-            className="min-h-10 max-h-20 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/35 outline-none disabled:opacity-50"
+            className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/35 outline-none disabled:opacity-50"
           />
           <button
             onClick={handleSend}
             disabled={busy || !input.trim()}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-teal-300 px-4 py-2 text-sm font-medium text-slate-950 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-teal-300 px-3 text-sm font-medium text-slate-950 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35"
           >
             <Send className="h-4 w-4" />
-            Send
+            <span className="hidden sm:inline">Send</span>
           </button>
-        </div>
-
-        <div className="mt-3 text-center text-[10px] uppercase tracking-[0.24em] text-white/28">
-          Dr.MRI.AI · Educational use only · Not for clinical diagnosis
         </div>
       </div>
     </div>
