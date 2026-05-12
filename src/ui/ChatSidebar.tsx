@@ -333,31 +333,25 @@ export default forwardRef<ChatSidebarHandle, ChatSidebarProps>(function ChatSide
           />
         )}
 
-        <div className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 sm:rounded-[24px] sm:p-4">
+        <div className="flex items-end gap-3 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3 py-2">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            rows={messages.length > 0 ? 2 : 3}
+            rows={1}
             placeholder={messages.length > 0 ? 'Challenge a finding, ask for differentials, or request more uncertainty.' : 'Describe what the model should evaluate and why it matters.'}
             disabled={busy}
-            className="max-h-28 min-h-12 w-full resize-none bg-transparent text-sm leading-6 text-white placeholder:text-white/35 outline-none disabled:opacity-50"
+            className="min-h-10 max-h-20 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/35 outline-none disabled:opacity-50"
           />
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="hidden text-[11px] uppercase tracking-[0.2em] text-white/35 sm:block">
-              {messages.length > 0 ? 'Follow-ups reuse the full conversation context' : 'Start with one precise diagnostic question'}
-            </p>
-            <button
-              onClick={handleSend}
-              disabled={busy || !input.trim()}
-              className="ml-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-teal-300 px-4 py-2 text-sm font-medium text-slate-950 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              <Send className="h-4 w-4" />
-              Send
-            </button>
-          </div>
+          <button
+            onClick={handleSend}
+            disabled={busy || !input.trim()}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-teal-300 px-4 py-2 text-sm font-medium text-slate-950 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            <Send className="h-4 w-4" />
+            Send
+          </button>
         </div>
 
         <div className="mt-3 text-center text-[10px] uppercase tracking-[0.24em] text-white/28">
