@@ -35,9 +35,14 @@ A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI give
 
 ### Live demo
 
+GitHub Pages: https://rabimba.github.io/drmriai/
 
 ### Run locally
 
+```bash
+npm install
+npm run dev
+```
 
 
 ### Configure AI analysis
@@ -88,8 +93,24 @@ This app is deployable as a static site on free tiers because there is no requir
 - Use Node 20+ for builds. `package.json` now declares that explicitly.
 - Use the full `npm run build` command so TypeScript is checked before deploy.
 - Do not put a production Gemini API key into `VITE_*` environment variables on a static host. Those values are bundled into client JavaScript. For hosted demos, keep the current runtime BYOK flow in the settings panel.
-- Ollama only works for the person running Ollama locally. If you deploy to Vercel or `*.pages.dev`, public visitors will not be able to use your local Ollama instance.
-- Gemma Web stays fully static, but first load is heavier because the browser downloads the task bundle and WebGPU runtime.
+- Ollama only works for the person running Ollama locally. If you deploy to GitHub Pages, Vercel, or `*.pages.dev`, public visitors will not be able to use your local Ollama instance.
+- Gemma browser providers stay fully static, but first load is heavier because the browser downloads the model bundle and WebGPU runtime.
+
+### GitHub Pages
+
+This repo includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml` for the project Pages URL:
+
+```text
+https://rabimba.github.io/drmriai/
+```
+
+The workflow builds with `VITE_BASE_PATH=/drmriai/`, so Vite emits asset URLs under `/drmriai/` and the bundled sample knee MRI is loaded from `/drmriai/sample-data/sample-knee-mri.zip`.
+
+One-time repository setup:
+
+1. Go to GitHub repo Settings → Pages.
+2. Under Build and deployment, set Source to **GitHub Actions**.
+3. Push to `main`, or run **Deploy GitHub Pages** manually from the Actions tab.
 
 ### Vercel
 
