@@ -71,7 +71,7 @@ export interface AnalysisEvidenceBundle {
   images: AnalysisEvidenceImage[];
 }
 
-export type ProviderType = 'gemini' | 'ollama' | 'openai-compatible' | 'gemma-web' | 'gemma-transformers';
+export type ProviderType = 'gemini' | 'ollama' | 'openai-compatible' | 'gemma-transformers';
 
 export interface ProviderConfig {
   provider: ProviderType;
@@ -84,9 +84,6 @@ export interface ProviderConfig {
   openAiCompatibleApiKey?: string;  // OpenAI-compatible bearer token
   openAiCompatibleTextModel?: string; // OpenAI-compatible model for Call 1 + follow-ups
   openAiCompatibleVisionModel?: string; // OpenAI-compatible model for Call 2 image analysis
-  gemmaWebTextModelPath?: string;   // Browser-local text model path/URL
-  gemmaWebVisionModelPath?: string; // Browser-local multimodal model path/URL
-  gemmaWebWasmRoot?: string;        // MediaPipe WebAssembly assets root
   gemmaTransformersModelId?: string; // Transformers.js model repo or local model path
   gemmaTransformersDtype?: string;   // Transformers.js dtype, e.g. q4f16
   gemmaTransformersMaxImages?: number; // Browser-local image budget

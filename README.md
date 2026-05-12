@@ -28,10 +28,10 @@ A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI give
 - **Smart slice filtering** — AI reasons about which series orientation, weighting, and slice range are diagnostically relevant, then samples only those slices
 - **Multi-series support** — Automatic scout detection, series metadata extraction (orientation, MRI weighting, resolution)
 - **Interactive results** — Clickable slice references in findings jump the viewer to the referenced image
-- **Privacy-first** — DICOM files are processed entirely in your browser. No data is uploaded to any server. Image data is only sent to the LLM provider you configure when you run an analysis, and Gemma Web keeps both planning and analysis on-device
+- **Privacy-first** — DICOM files are processed entirely in your browser. No data is uploaded to any server. Image data is only sent to the LLM provider you configure when you run an analysis, and Gemma 4 Browser keeps both planning and analysis on-device
 - **Multiple layouts** — 1×1, 1×2, 2×1, 2×2 grid, and MPR (axial/sagittal/coronal)
 - **Standard tools** — Window/Level, Zoom, Pan, Length measurement, Rotate, Flip, Invert, Cine playback
-- **Provider-agnostic** — Works with Gemini API, OpenAI-compatible endpoints, local models via Ollama, or browser-local Gemma Web models
+- **Provider-agnostic** — Works with Gemini API, OpenAI-compatible endpoints, local models via Ollama, or browser-local Gemma 4 models
 
 ## Getting Started
 
@@ -57,6 +57,14 @@ For local models, install [Ollama](https://ollama.ai), pull a model (`ollama pul
 
 For private or enterprise gateways, select **OpenAI-Compatible**, enter the `/v1` endpoint URL and API key, then click **Refresh models**. The app calls `/models` to populate text and vision model dropdowns. Because OpenAI-compatible model metadata does not standardize multimodal capabilities, vision support is inferred from model names; if your gateway uses custom names, you can still type model IDs manually.
 
+OpenAI-compatible endpoints must allow browser CORS for both model discovery and chat completions. If an endpoint works with `curl` but fails in the app, configure the gateway to allow the app origin, methods `GET, POST, OPTIONS`, and headers `Authorization, Content-Type`. For local development only, you can run Vite with a same-origin proxy:
+
+```bash
+VITE_OPENAI_COMPAT_PROXY_TARGET=https://your-gateway.example.com/v1 npm run dev
+```
+
+Then use `/openai-compatible-proxy` as the OpenAI-compatible endpoint in Settings. GitHub Pages cannot run this proxy; hosted static deployments need the upstream gateway to expose CORS or a separate serverless proxy.
+
 The default provider is **Ollama** for a more stable local workflow. **Gemma 4 Browser** is available for fully browser-local analysis through Transformers.js + WebGPU:
 
 - **Model**: `onnx-community/gemma-4-E2B-it-ONNX`
@@ -72,15 +80,6 @@ On the first run, the pipeline shows Gemma model download/load status while the 
 window.__DRMRIAI_PRINT_DEBUG_LOGS__()
 ```
 
-Gemma Web remains available as the older experimental MediaPipe/LiteRT browser path in settings.
-
-If you want to override that, select **Gemma Web** in settings and point it at a different web-converted Gemma model under `public/models/` or a remote URL:
-
-- **Text planning / follow-ups**: the hosted `gemma-3n-E2B-it-int4.task` bundle is used by default
-- **Image analysis**: the same hosted Gemma 3n task bundle is used by default
-
-The browser integration uses Google AI Edge MediaPipe/WebGPU runtime. The default browser URL uses a public mirror of a Gemma 3n E2B MediaPipe task bundle because the original Google Hugging Face repository is gated and the LiteRT web bundle path was not being accepted by the current browser runtime.
-
 
 ## Tech Stack
 
@@ -89,7 +88,7 @@ The browser integration uses Google AI Edge MediaPipe/WebGPU runtime. The defaul
 - **Gemini API** — optional hosted multimodal LLM for image analysis
 - **OpenAI-compatible endpoints** — optional hosted/private chat completions gateways with runtime BYOK credentials
 - **Ollama** — optional local model support
-- **Gemma Web + MediaPipe/WebGPU** — optional browser-local on-device inference
+- **Gemma 4 Browser + Transformers.js/WebGPU** — optional browser-local on-device inference
 
 ## Deployment
 

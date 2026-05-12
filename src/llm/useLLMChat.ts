@@ -99,7 +99,7 @@ function loadSliceExporter() {
 }
 
 function getModelLabel(modelPath?: string): string {
-  if (!modelPath) return 'gemma-web';
+  if (!modelPath) return 'model';
   const normalized = modelPath.trim().replace(/\/+$/, '');
   return normalized.split('/').pop() || normalized;
 }
@@ -143,13 +143,6 @@ function getProviderLabels(providerConfig: ProviderConfig): { textModel: string;
     return {
       textModel: providerConfig.ollamaTextModel || 'alibayram/medgemma:4b',
       visionModel: providerConfig.ollamaVisionModel || 'gemma4:latest',
-    };
-  }
-
-  if (providerConfig.provider === 'gemma-web') {
-    return {
-      textModel: getModelLabel(providerConfig.gemmaWebTextModelPath || providerConfig.gemmaWebVisionModelPath),
-      visionModel: getModelLabel(providerConfig.gemmaWebVisionModelPath || providerConfig.gemmaWebTextModelPath),
     };
   }
 

@@ -2,22 +2,18 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, CheckCircle, XCircle, Loader2, Download, ChevronDown, Copy, Check, RefreshCw } from 'lucide-react';
 import type { ProviderConfig, ProviderType } from '../llm/types';
 import {
-  DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
-  DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
-  DEFAULT_GEMMA_WEB_WASM_ROOT,
-  hasWebGpuSupport,
-} from '../llm/gemmaWebConfig';
-import {
   DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
   DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET,
   DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
   DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
   GEMMA_TRANSFORMERS_DTYPES,
   GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGETS,
+  hasTransformersWebGpuSupport,
 } from '../llm/gemmaTransformersConfig';
 import {
   DEFAULT_GEMINI_MODEL,
   fetchOpenAiCompatibleModels,
+  inferOpenAiCompatibleModelCapabilities,
   normalizeOpenAiCompatibleBaseUrl,
   type OllamaModelInfo,
   type OpenAiCompatibleModelInfo,
@@ -59,6 +55,27 @@ const RECOMMENDED_MODELS: RecommendedModel[] = [
   { name: 'llama3.2:latest', label: 'Llama 3.2 3B', desc: 'Fast general text (2GB)', role: 'text' },
 ];
 
+const COMMON_OPENAI_COMPATIBLE_MODEL_NAMES = [
+  'gpt-5',
+  'gpt-5-mini',
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4.1-mini',
+  'o4-mini',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'claude-sonnet-4-6',
+  'claude-opus-4-6',
+  'llama33-70b',
+];
+
+const COMMON_OPENAI_COMPATIBLE_MODELS: OpenAiCompatibleModelInfo[] = COMMON_OPENAI_COMPATIBLE_MODEL_NAMES.map((name) => ({
+  id: name,
+  name,
+  object: 'model',
+  capabilities: inferOpenAiCompatibleModelCapabilities(name),
+}));
+
 function formatSize(bytes?: number): string {
   if (!bytes || bytes <= 0) return '';
   const gb = bytes / (1024 * 1024 * 1024);
@@ -92,7 +109,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
   const ollamaUrlProblem = getOllamaUrlProblem(baseUrl);
   const openAiBaseUrl = normalizeOpenAiCompatibleBaseUrl(config.openAiCompatibleBaseUrl);
   const openAiApiKey = config.openAiCompatibleApiKey?.trim() ?? '';
-  const webGpuAvailable = hasWebGpuSupport();
+  const webGpuAvailable = hasTransformersWebGpuSupport();
 
   // Close on outside click
   useEffect(() => {
@@ -143,7 +160,7 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
         setOpenAiError('The endpoint responded, but no models were listed. You can still enter model names manually.');
       }
     } catch (error) {
-      setOpenAiModels([]);
+      setOpenAiModels(COMMON_OPENAI_COMPATIBLE_MODELS);
       setOpenAiStatus('offline');
       setOpenAiError(error instanceof Error ? error.message : 'Could not load models from the OpenAI-compatible endpoint.');
     }
@@ -291,14 +308,6 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
               >
                 Gemma 4 Browser
               </button>
-              <button
-                onClick={() => setProvider('gemma-web')}
-                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  config.provider === 'gemma-web' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
-                }`}
-              >
-                Gemma Web
-              </button>
             </div>
           </div>
 
@@ -389,100 +398,6 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                 </select>
                 <p className="text-[10px] text-neutral-500 mt-1">
                   Browser Gemma analyzes images in small batches and then synthesizes a final answer. Use 70 or 140 if ONNX reports tensor-size limits.
-                </p>
-              </div>
-            </>
-          )}
-
-          {/* Gemma Web fields */}
-          {config.provider === 'gemma-web' && (
-            <>
-              <div className="flex items-center gap-2 text-xs">
-                {webGpuAvailable ? (
-                  <>
-                    <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                    <span className="text-green-400">WebGPU available</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-red-400">WebGPU unavailable</span>
-                  </>
-                )}
-                <span className="text-neutral-500 ml-auto">Runs fully in the browser</span>
-              </div>
-
-              <div className="bg-neutral-900 rounded-lg px-3 py-3 space-y-2">
-                <p className="text-xs text-neutral-300">
-                  Use Google&apos;s browser Gemma runtime via MediaPipe WebGPU.
-                </p>
-                <p className="text-[10px] text-neutral-500">
-                  This is the experimental browser path. The hosted Gemma 3n task bundle downloads automatically on first run and is then cached by the browser.
-                </p>
-                <p className="text-[10px] text-neutral-500">
-                  The browser default uses a public task-bundle mirror because Google&apos;s original Hugging Face repo is gated and the `.litertlm` path was not being accepted by the current web runtime.
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs text-neutral-400 block mb-1.5">
-                  Text Model Path <span className="text-neutral-600">(Call 1 + follow-ups)</span>
-                </label>
-                <input
-                  type="text"
-                  value={config.gemmaWebTextModelPath ?? ''}
-                  onChange={(e) => onConfigChange({ ...config, gemmaWebTextModelPath: e.target.value })}
-                  placeholder={DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH}
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
-                />
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <p className="text-[10px] text-neutral-500">
-                    Default: hosted Gemma 3n E2B `.task` bundle for MediaPipe WebGPU.
-                  </p>
-                  <button
-                    onClick={() => onConfigChange({ ...config, gemmaWebTextModelPath: DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH })}
-                    className="shrink-0 text-[10px] text-blue-400 hover:text-blue-300"
-                  >
-                    Use example
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-neutral-400 block mb-1.5">
-                  Vision Model Path <span className="text-neutral-600">(Call 2: image analysis)</span>
-                </label>
-                <input
-                  type="text"
-                  value={config.gemmaWebVisionModelPath ?? ''}
-                  onChange={(e) => onConfigChange({ ...config, gemmaWebVisionModelPath: e.target.value })}
-                  placeholder={DEFAULT_GEMMA_WEB_VISION_MODEL_PATH}
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
-                />
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <p className="text-[10px] text-neutral-500">
-                    Leave this as the default unless you want a different hosted or self-hosted MediaPipe-compatible `.task` bundle.
-                  </p>
-                  <button
-                    onClick={() => onConfigChange({ ...config, gemmaWebVisionModelPath: DEFAULT_GEMMA_WEB_VISION_MODEL_PATH })}
-                    className="shrink-0 text-[10px] text-blue-400 hover:text-blue-300"
-                  >
-                    Use example
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-neutral-400 block mb-1.5">MediaPipe WASM Root</label>
-                <input
-                  type="text"
-                  value={config.gemmaWebWasmRoot ?? DEFAULT_GEMMA_WEB_WASM_ROOT}
-                  onChange={(e) => onConfigChange({ ...config, gemmaWebWasmRoot: e.target.value })}
-                  placeholder={DEFAULT_GEMMA_WEB_WASM_ROOT}
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-blue-500"
-                />
-                <p className="text-[10px] text-neutral-500 mt-1">
-                  Leave the CDN default unless you self-host the MediaPipe runtime.
                 </p>
               </div>
             </>
@@ -598,8 +513,13 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
               </div>
 
               {openAiError && (
-                <div className="bg-neutral-900 rounded-lg px-3 py-2 text-[10px] text-amber-300/90">
-                  {openAiError}
+                <div className="bg-neutral-900 rounded-lg px-3 py-2 space-y-1">
+                  <p className="text-[10px] text-amber-300/90">{openAiError}</p>
+                  {openAiModels.length > 0 && (
+                    <p className="text-[10px] text-neutral-500">
+                      Showing a fallback list of common model IDs. You can also type the exact model ID manually.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -650,6 +570,9 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                     Vision support is inferred from model names. If this model is actually multimodal, you can still try it.
                   </p>
                 )}
+                <p className="mt-1.5 text-[10px] text-neutral-500">
+                  For local CORS workarounds, run Vite with `VITE_OPENAI_COMPAT_PROXY_TARGET` and use endpoint `/openai-compatible-proxy`.
+                </p>
               </div>
             </>
           )}

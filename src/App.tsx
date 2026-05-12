@@ -15,12 +15,6 @@ import type {
   ViewportContext,
 } from './llm/types';
 import {
-  DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
-  DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
-  DEFAULT_GEMMA_WEB_WASM_ROOT,
-  LEGACY_GEMMA_WEB_MODEL_PATHS,
-} from './llm/gemmaWebConfig';
-import {
   DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
   DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET,
   DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
@@ -36,13 +30,7 @@ const LEGACY_STORAGE_KEY = 'dicomassist-llm-config';
 const LEGACY_SAVED_ANALYSES_KEY = 'dicomassist-saved-analyses';
 const OLLAMA_DEFAULT_TEXT_MODEL = 'alibayram/medgemma:4b';
 const OLLAMA_DEFAULT_VISION_MODEL = 'gemma4:latest';
-const DEFAULT_GEMMA_WEB_FALLBACK_PATHS = Array.from(
-  new Set([
-    DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
-    DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
-    ...LEGACY_GEMMA_WEB_MODEL_PATHS,
-  ]),
-);
+const REMOVED_MEDIAPIPE_PROVIDER = ['gemma', 'web'].join('-');
 
 function getDefaultProviderConfig(): ProviderConfig {
   return {
@@ -55,9 +43,6 @@ function getDefaultProviderConfig(): ProviderConfig {
     openAiCompatibleApiKey: '',
     openAiCompatibleTextModel: '',
     openAiCompatibleVisionModel: '',
-    gemmaWebTextModelPath: DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
-    gemmaWebVisionModelPath: DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
-    gemmaWebWasmRoot: DEFAULT_GEMMA_WEB_WASM_ROOT,
     gemmaTransformersModelId: DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
     gemmaTransformersDtype: DEFAULT_GEMMA_TRANSFORMERS_DTYPE,
     gemmaTransformersMaxImages: DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES,
@@ -76,6 +61,9 @@ function loadConfig(): ProviderConfig {
       if (savedProvider === 'claude') {
         merged.provider = 'gemini';
       }
+      if (savedProvider === REMOVED_MEDIAPIPE_PROVIDER) {
+        merged.provider = 'gemma-transformers';
+      }
       if (
         merged.provider === 'ollama' &&
         (merged.ollamaVisionModel === 'llava:7b' || merged.ollamaVisionModel === 'gemma3:4b')
@@ -91,31 +79,6 @@ function loadConfig(): ProviderConfig {
         70,
         Math.min(280, Number(merged.gemmaTransformersImageTokenBudget) || DEFAULT_GEMMA_TRANSFORMERS_IMAGE_TOKEN_BUDGET),
       );
-      const shouldMigrateGemmaDefaultToOllama =
-        savedProvider === 'gemma-web' &&
-        DEFAULT_GEMMA_WEB_FALLBACK_PATHS.includes(merged.gemmaWebTextModelPath || DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH) &&
-        DEFAULT_GEMMA_WEB_FALLBACK_PATHS.includes(merged.gemmaWebVisionModelPath || DEFAULT_GEMMA_WEB_VISION_MODEL_PATH);
-
-      if (
-        merged.provider === 'gemma-web' &&
-        merged.gemmaWebTextModelPath &&
-        LEGACY_GEMMA_WEB_MODEL_PATHS.includes(merged.gemmaWebTextModelPath)
-      ) {
-        merged.gemmaWebTextModelPath = DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH;
-      }
-
-      if (
-        merged.provider === 'gemma-web' &&
-        merged.gemmaWebVisionModelPath &&
-        LEGACY_GEMMA_WEB_MODEL_PATHS.includes(merged.gemmaWebVisionModelPath)
-      ) {
-        merged.gemmaWebVisionModelPath = DEFAULT_GEMMA_WEB_VISION_MODEL_PATH;
-      }
-
-      if (shouldMigrateGemmaDefaultToOllama) {
-        merged.provider = 'ollama';
-      }
-
       return merged;
     }
   } catch { /* ignore */ }
@@ -165,7 +128,6 @@ function formatFileTimestamp(timestamp: number): string {
 
 function getProviderLabel(config: ProviderConfig): string {
   if (config.provider === 'gemma-transformers') return 'Gemma 4 Browser';
-  if (config.provider === 'gemma-web') return 'Gemma Web';
   if (config.provider === 'openai-compatible') return 'OpenAI-Compatible';
   if (config.provider === 'ollama') return 'Ollama';
   return 'Gemini API';
@@ -309,7 +271,6 @@ function SuspenseFallback({
 
 export default function App() {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-  const [viewerReady, setViewerReady] = useState(false);
   const [viewerBooting, setViewerBooting] = useState(false);
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [imageIds, setImageIds] = useState<string[]>([]);
@@ -351,75 +312,11 @@ export default function App() {
   const latestAssistantMessage = getLatestMessage(messages, 'assistant');
   const latestUserMessage = getLatestMessage(messages, 'user');
 
-  useEffect(() => {
-    if (!viewerReady || providerConfig.provider !== 'gemma-web' || imageIds.length === 0) return;
-
-    const wasmRoot = providerConfig.gemmaWebWasmRoot || DEFAULT_GEMMA_WEB_WASM_ROOT;
-    const paths = Array.from(
-      new Set([
-        providerConfig.gemmaWebTextModelPath || DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
-        providerConfig.gemmaWebVisionModelPath || providerConfig.gemmaWebTextModelPath || DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
-      ].filter((path): path is string => Boolean(path))),
-    );
-
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    let idleId: number | undefined;
-
-    const warmModels = async () => {
-      try {
-        const { warmGemmaWebModel } = await import('./llm/GemmaWebRuntime');
-        if (cancelled) return;
-        await Promise.all(paths.map((path) => warmGemmaWebModel(path, wasmRoot)));
-      } catch (error) {
-        logger.warn('[GemmaWeb] Deferred model warmup failed:', error);
-      }
-    };
-
-    const browserWindow = typeof window === 'undefined' ? null : window;
-    const requestIdleCallback =
-      browserWindow && 'requestIdleCallback' in browserWindow
-        ? browserWindow.requestIdleCallback.bind(browserWindow)
-        : null;
-    const cancelIdleCallback =
-      browserWindow && 'cancelIdleCallback' in browserWindow
-        ? browserWindow.cancelIdleCallback.bind(browserWindow)
-        : null;
-
-    if (requestIdleCallback) {
-      idleId = requestIdleCallback(() => {
-        void warmModels();
-      }, { timeout: 2500 });
-    } else {
-      timeoutId = globalThis.setTimeout(() => {
-        void warmModels();
-      }, 1200);
-    }
-
-    return () => {
-      cancelled = true;
-      if (idleId != null && cancelIdleCallback) {
-        cancelIdleCallback(idleId);
-      }
-      if (timeoutId != null) {
-        globalThis.clearTimeout(timeoutId);
-      }
-    };
-  }, [
-    viewerReady,
-    imageIds.length,
-    providerConfig.provider,
-    providerConfig.gemmaWebTextModelPath,
-    providerConfig.gemmaWebVisionModelPath,
-    providerConfig.gemmaWebWasmRoot,
-  ]);
-
   const handleFilesLoaded = useCallback(async (result: LoadResult) => {
     setViewerBooting(true);
     setViewerError(null);
     try {
       await ensureCornerstoneReady();
-      setViewerReady(true);
       setImageIds(result.imageIds);
       setPrimaryAxis(result.primaryAxis);
       setOrientation(result.primaryAxis);

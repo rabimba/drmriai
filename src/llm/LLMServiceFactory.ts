@@ -8,13 +8,6 @@ import {
   buildFollowUpSystemPrompt,
 } from './PromptBuilder';
 import {
-  DEFAULT_GEMMA_WEB_MAX_IMAGES,
-  DEFAULT_GEMMA_WEB_MAX_TOKENS,
-  DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
-  DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
-  DEFAULT_GEMMA_WEB_WASM_ROOT,
-} from './gemmaWebConfig';
-import {
   DEFAULT_GEMMA_TRANSFORMERS_ANALYSIS_TOKENS,
   DEFAULT_GEMMA_TRANSFORMERS_BATCH_ANALYSIS_TOKENS,
   DEFAULT_GEMMA_TRANSFORMERS_BATCH_SIZE,
@@ -24,11 +17,6 @@ import {
   DEFAULT_GEMMA_TRANSFORMERS_MODEL_ID,
   DEFAULT_GEMMA_TRANSFORMERS_PLANNING_TOKENS,
 } from './gemmaTransformersConfig';
-import {
-  getGemmaWebSession,
-  normalizeGemmaWebModelPath,
-  preparePromptImages,
-} from './GemmaWebRuntime';
 import {
   generateGemmaTransformersResponse,
   type GemmaTransformersMessage,
@@ -190,6 +178,13 @@ export function normalizeOpenAiCompatibleBaseUrl(baseUrl?: string): string {
   const trimmed = (baseUrl ?? '').trim();
   if (!trimmed) return '';
 
+  if (trimmed.startsWith('/')) {
+    return trimmed
+      .replace(/\/+$/, '')
+      .replace(/\/chat\/completions$/i, '')
+      .replace(/\/models$/i, '');
+  }
+
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   return withScheme
     .replace(/\/+$/, '')
@@ -297,21 +292,36 @@ function formatOpenAiCompatibleHttpError(status: number, body: string, model: st
   return `OpenAI-compatible API error (${status}) from "${model}": ${error}`;
 }
 
+function formatOpenAiCompatibleNetworkError(baseUrl: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'this app origin';
+  return (
+    `Cannot connect to OpenAI-compatible endpoint at ${baseUrl}. ` +
+    'If this endpoint works with curl but fails in the browser, it is probably missing CORS headers. ' +
+    `Allow Origin ${origin}, methods GET/POST/OPTIONS, and headers Authorization, Content-Type; ` +
+    'or use a same-origin proxy.'
+  );
+}
+
 export async function fetchOpenAiCompatibleModels(
   baseUrl: string,
   apiKey: string,
 ): Promise<OpenAiCompatibleModelInfo[]> {
   const normalizedBaseUrl = normalizeOpenAiCompatibleBaseUrl(baseUrl);
   const token = apiKey.trim();
-  if (!normalizedBaseUrl || !token) return [];
+  if (!normalizedBaseUrl) return [];
 
-  const res = await fetch(buildOpenAiCompatibleUrl(normalizedBaseUrl, '/models'), {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
+  let res: Response;
+  try {
+    res = await fetch(buildOpenAiCompatibleUrl(normalizedBaseUrl, '/models'), {
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    throw new Error(formatOpenAiCompatibleNetworkError(normalizedBaseUrl));
+  }
 
   if (!res.ok) {
     const body = await res.text();
@@ -580,7 +590,7 @@ class OpenAiCompatibleService implements LLMService {
       if (err instanceof DOMException && err.name === 'TimeoutError') {
         throw new Error(`OpenAI-compatible request timed out (5min). Model: ${params.model}. Try fewer slices or a smaller model.`);
       }
-      throw new Error(`Cannot connect to OpenAI-compatible endpoint at ${this.baseUrl}. Check the URL, CORS policy, and network access.`);
+      throw new Error(formatOpenAiCompatibleNetworkError(this.baseUrl));
     }
 
     if (!res.ok) {
@@ -744,114 +754,6 @@ class OllamaService implements LLMService {
 
     const data = await res.json();
     return data.message?.content ?? '';
-  }
-}
-
-// --- Gemma Web Service ---
-
-class GemmaWebService implements LLMService {
-  private textModelPath?: string;
-  private visionModelPath?: string;
-  private wasmRoot: string;
-
-  constructor(textModelPath: string | undefined, visionModelPath: string | undefined, wasmRoot: string) {
-    this.textModelPath = normalizeGemmaWebModelPath(textModelPath);
-    this.visionModelPath = normalizeGemmaWebModelPath(visionModelPath);
-    this.wasmRoot = wasmRoot.trim() || DEFAULT_GEMMA_WEB_WASM_ROOT;
-  }
-
-  private getTextModelPath(): string {
-    return this.textModelPath || this.visionModelPath || DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH;
-  }
-
-  private getVisionModelPath(): string {
-    return this.visionModelPath || this.textModelPath || DEFAULT_GEMMA_WEB_VISION_MODEL_PATH;
-  }
-
-  async getSelectionPlan(metadata: StudyMetadata, clinicalHint: string, viewportContext?: ViewportContext): Promise<SelectionPlan> {
-    const session = await getGemmaWebSession({
-      modelPath: this.getTextModelPath(),
-      wasmRoot: this.wasmRoot,
-      maxTokens: DEFAULT_GEMMA_WEB_MAX_TOKENS,
-      maxNumImages: DEFAULT_GEMMA_WEB_MAX_IMAGES,
-    });
-
-    const prompt = [
-      buildSelectionSystemPrompt(),
-      '',
-      buildSelectionUserPrompt(metadata, clinicalHint, viewportContext),
-      '',
-      'Return JSON only.',
-    ].join('\n');
-
-    const response = await session.generateResponse(prompt);
-    return parseSelectionPlan(response);
-  }
-
-  async analyzeSlices(
-    images: Blob[],
-    metadata: StudyMetadata,
-    clinicalHint: string,
-    plan: SelectionPlan,
-    sliceLabels: string[],
-    surveyMode?: boolean,
-  ): Promise<string> {
-    const session = await getGemmaWebSession({
-      modelPath: this.getVisionModelPath(),
-      wasmRoot: this.wasmRoot,
-      maxTokens: DEFAULT_GEMMA_WEB_MAX_TOKENS,
-      maxNumImages: DEFAULT_GEMMA_WEB_MAX_IMAGES,
-    });
-
-    const preparedImages = await preparePromptImages(images);
-
-    try {
-      const promptParts: Array<string | HTMLImageElement> = [
-        '<start_of_turn>user\n',
-        buildAnalysisSystemPrompt(surveyMode),
-        '\n\n',
-        buildAnalysisUserPrompt(metadata, clinicalHint, plan, sliceLabels),
-        '\n\nThe ordered images follow below.\n\n',
-      ];
-
-      preparedImages.forEach((prepared, index) => {
-        promptParts.push(`Image ${index + 1}: ${sliceLabels[index] ?? `Image ${index + 1}`}\n`);
-        promptParts.push(prepared.element);
-        promptParts.push('\n\n');
-      });
-
-      promptParts.push('<end_of_turn>\n<start_of_turn>model\n');
-      const response = await session.generateResponse(promptParts);
-      return response;
-    } finally {
-      preparedImages.forEach((prepared) => prepared.cleanup());
-    }
-  }
-
-  async sendFollowUp(conversationHistory: ChatMessage[], metadata: StudyMetadata): Promise<string> {
-    const session = await getGemmaWebSession({
-      modelPath: this.getTextModelPath(),
-      wasmRoot: this.wasmRoot,
-      maxTokens: DEFAULT_GEMMA_WEB_MAX_TOKENS,
-      maxNumImages: DEFAULT_GEMMA_WEB_MAX_IMAGES,
-    });
-
-    const transcript = conversationHistory
-      .map((msg) => `${msg.role === 'assistant' ? 'Assistant' : 'User'}: ${msg.content}`)
-      .join('\n\n');
-
-    const prompt = [
-      buildFollowUpSystemPrompt(),
-      '',
-      `Study context: ${metadata.studyDescription} (${metadata.modality})`,
-      '',
-      'Conversation so far:',
-      transcript,
-      '',
-      'Answer the latest user question directly. Do not claim to be re-reading images.',
-    ].join('\n');
-
-    return session.generateResponse(prompt);
   }
 }
 
@@ -1199,13 +1101,6 @@ export function createLLMService(config: ProviderConfig): LLMService {
       config.openAiCompatibleApiKey,
       config.openAiCompatibleTextModel,
       config.openAiCompatibleVisionModel,
-    );
-  }
-  if (config.provider === 'gemma-web') {
-    return new GemmaWebService(
-      config.gemmaWebTextModelPath || DEFAULT_GEMMA_WEB_TEXT_MODEL_PATH,
-      config.gemmaWebVisionModelPath || DEFAULT_GEMMA_WEB_VISION_MODEL_PATH,
-      config.gemmaWebWasmRoot || DEFAULT_GEMMA_WEB_WASM_ROOT,
     );
   }
   if (config.provider === 'gemma-transformers') {
