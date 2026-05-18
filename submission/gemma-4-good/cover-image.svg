@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Dr.MRI.AI Gemma 4 Good Hackathon Cover</title>
+  <desc id="desc">Google-color inspired Gemma 4 Good cover showing a DICOM viewer, Gemma 4 Browser, and privacy-first slice triage.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.52" stop-color="#f3f7ff"/>
+      <stop offset="1" stop-color="#eef7f1"/>
+    </linearGradient>
+    <linearGradient id="scan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8f0fe"/>
+      <stop offset="0.46" stop-color="#8ab4f8"/>
+      <stop offset="1" stop-color="#185abc"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4285f4"/>
+      <stop offset="0.34" stop-color="#ea4335"/>
+      <stop offset="0.66" stop-color="#fbbc04"/>
+      <stop offset="1" stop-color="#34a853"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#174ea6" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1270" cy="185" r="210" fill="#e8f0fe" opacity="0.95"/>
+  <circle cx="1405" cy="385" r="150" fill="#e6f4ea" opacity="0.95"/>
+  <circle cx="236" cy="720" r="145" fill="#fef7e0" opacity="0.92"/>
+  <path d="M0 724 C210 642 380 690 560 604 C780 502 1000 584 1210 498 C1390 425 1510 449 1600 404 L1600 900 L0 900 Z" fill="#e8f0fe" opacity="0.84"/>
+  <path d="M0 790 C245 704 440 742 635 650 C835 558 1030 638 1245 548 C1410 478 1535 500 1600 465 L1600 900 L0 900 Z" fill="#e6f4ea" opacity="0.9"/>
+
+  <g transform="translate(88 92)">
+    <g transform="translate(0 -50)">
+      <rect x="0" y="0" width="86" height="8" rx="4" fill="#4285f4"/>
+      <rect x="98" y="0" width="86" height="8" rx="4" fill="#ea4335"/>
+      <rect x="196" y="0" width="86" height="8" rx="4" fill="#fbbc04"/>
+      <rect x="294" y="0" width="86" height="8" rx="4" fill="#34a853"/>
+    </g>
+    <text x="0" y="0" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">GEMMA 4 GOOD HACKATHON</text>
+    <text x="0" y="98" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="88" font-weight="800">Dr.MRI.AI</text>
+    <text x="0" y="156" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="500">Evidence-first review with Gemma 4</text>
+    <rect x="0" y="206" width="470" height="4" rx="2" fill="url(#accent)"/>
+    <text x="0" y="278" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="28">Plan first. Review the evidence. Keep images local.</text>
+  </g>
+
+  <g transform="translate(835 96)" filter="url(#soft)">
+    <rect x="0" y="0" width="642" height="552" rx="26" fill="url(#panel)" stroke="#d2e3fc" stroke-width="2"/>
+    <rect x="26" y="28" width="590" height="58" rx="14" fill="#ffffff" stroke="#e8eaed"/>
+    <circle cx="60" cy="57" r="9" fill="#ea4335"/>
+    <circle cx="91" cy="57" r="9" fill="#fbbc04"/>
+    <circle cx="122" cy="57" r="9" fill="#34a853"/>
+    <text x="160" y="67" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="700">Gemma 4 Browser Pipeline</text>
+
+    <g transform="translate(34 126)">
+      <rect x="0" y="0" width="270" height="180" rx="16" fill="#ffffff" stroke="#d2e3fc"/>
+      <circle cx="135" cy="90" r="64" fill="url(#scan)" opacity="0.88"/>
+      <ellipse cx="135" cy="90" rx="42" ry="58" fill="#174ea6" opacity="0.42"/>
+      <path d="M81 90 H189 M135 36 V144" stroke="#ffffff" stroke-opacity="0.72" stroke-width="2"/>
+      <text x="18" y="158" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="18">DICOM viewer</text>
+    </g>
+
+    <g transform="translate(338 126)">
+      <rect x="0" y="0" width="270" height="180" rx="16" fill="#ffffff" stroke="#fce8b2"/>
+      <path d="M48 48 H222" stroke="#4285f4" stroke-width="10" stroke-linecap="round"/>
+      <path d="M48 84 H178" stroke="#ea4335" stroke-width="10" stroke-linecap="round"/>
+      <path d="M48 120 H208" stroke="#fbbc04" stroke-width="10" stroke-linecap="round"/>
+      <path d="M74 148 C110 120 142 176 196 136" fill="none" stroke="#34a853" stroke-width="7" stroke-linecap="round"/>
+      <text x="18" y="158" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="18">Structured plan</text>
+    </g>
+
+    <g transform="translate(34 344)">
+      <rect x="0" y="0" width="574" height="142" rx="18" fill="#ffffff" stroke="#ceead6"/>
+      <rect x="25" y="28" width="128" height="86" rx="10" fill="#e8f0fe"/>
+      <rect x="175" y="28" width="128" height="86" rx="10" fill="#fce8e6"/>
+      <rect x="325" y="28" width="128" height="86" rx="10" fill="#fef7e0"/>
+      <path d="M58 71 H120" stroke="#4285f4" stroke-width="4" stroke-linecap="round"/>
+      <path d="M208 71 H270" stroke="#ea4335" stroke-width="4" stroke-linecap="round"/>
+      <path d="M358 71 H420" stroke="#fbbc04" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="501" cy="70" r="34" fill="none" stroke="url(#accent)" stroke-width="8"/>
+      <path d="M492 70 L502 82 L522 54" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="25" y="124" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="18">Evidence-limited multimodal review</text>
+    </g>
+  </g>
+
+  <g transform="translate(88 690)">
+    <rect x="0" y="0" width="370" height="72" rx="18" fill="#ffffff" stroke="#d2e3fc"/>
+    <rect x="0" y="0" width="10" height="72" rx="5" fill="#4285f4"/>
+    <text x="28" y="45" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">Gemma 4 E2B-it ONNX</text>
+    <rect x="400" y="0" width="260" height="72" rx="18" fill="#ffffff" stroke="#ceead6"/>
+    <rect x="400" y="0" width="10" height="72" rx="5" fill="#34a853"/>
+    <text x="428" y="45" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">WebGPU</text>
+    <rect x="690" y="0" width="330" height="72" rx="18" fill="#ffffff" stroke="#fce8b2"/>
+    <rect x="690" y="0" width="10" height="72" rx="5" fill="#fbbc04"/>
+    <text x="718" y="45" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">MedGemma option</text>
+  </g>
+</svg>

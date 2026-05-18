@@ -1,8 +1,8 @@
 # Dr.MRI.AI
 
-**AI-Powered Medical Image Analysis**
+**Evidence-first medical image review with Gemma 4**
 
-Smart slice selection meets multimodal AI analysis. Dr.MRI.AI is a web-based DICOM viewer that intelligently selects the right images before sending them to an LLM for analysis — because the hard part isn't the AI, it's knowing what to send it.
+Smart slice selection meets multimodal AI. Dr.MRI.AI is a web-based DICOM viewer that selects the right evidence before asking an LLM to review images — because the hard part is not just generating an answer, it is knowing what evidence the answer should be grounded in.
 
 Developed by Rabimba.
 
@@ -16,12 +16,12 @@ https://rabimba.github.io/drmriai/
 
 ## How It Works
 
-A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI gives garbage results. Dr.MRI.AI uses a **two-call architecture**:
+A knee MRI can have 200+ slices across 8+ series. Dumping them all to an AI weakens grounding and makes the result harder to audit. Dr.MRI.AI uses an **evidence-first two-call architecture**:
 
 1. **Load** — Drag and drop DICOM files or folders into the browser
 2. **Analyze** — Describe what to evaluate (e.g., "evaluate for ACL tear grade")
 3. **Plan** — The LLM analyzes study metadata and selects the optimal series, slice range, and windowing based on the clinical question
-4. **Review** — Only the focused slices are sent for multimodal analysis, producing findings with interactive slice references you can click to navigate
+4. **Review** — Only the focused slices are sent for multimodal educational review, producing findings with interactive slice references you can click to navigate
 
 ## Key Features
 
@@ -50,10 +50,18 @@ npm run dev
 ### Configure AI analysis
 
 1. Click the ⚙ Settings icon in the toolbar
-2. Keep **Ollama** as the default local workflow, or switch to **Gemini API** / **OpenAI-Compatible** and enter your runtime endpoint credentials
-3. Load DICOM files, open the AI workspace, and describe what to evaluate
+2. For the public no-server path, choose **Gemma 4 Browser**. It uses `onnx-community/gemma-4-E2B-it-ONNX` with Transformers.js and WebGPU.
+3. For the advanced local workflow, keep **Ollama** and use MedGemma for text planning plus Gemma 4 for vision review.
+4. Load DICOM files, open the AI workspace, and describe what to evaluate
 
-For local models, install [Ollama](https://ollama.ai), pull a model (`ollama pull gemma3:4b`), and select Ollama in settings. Note: local models usually produce lower quality results for medical image analysis than the hosted Gemini path.
+For the recommended Ollama workflow, install [Ollama](https://ollama.ai), then pull the local models:
+
+```bash
+ollama pull alibayram/medgemma:4b
+ollama pull gemma4:latest
+```
+
+`alibayram/medgemma:4b` is used as the text-only medical planner for Call 1. `gemma4:latest` is used as the local vision model for Call 2 when installed and exposed by Ollama. Ollama is controlled by the person running it locally; public visitors to the hosted demo will need their own Ollama setup to use this path.
 
 For private or enterprise gateways, select **OpenAI-Compatible**, enter the `/v1` endpoint URL and API key, then click **Refresh models**. The app calls `/models` to populate text and vision model dropdowns. Because OpenAI-compatible model metadata does not standardize multimodal capabilities, vision support is inferred from model names; if your gateway uses custom names, you can still type model IDs manually.
 
@@ -79,7 +87,7 @@ OpenAI-Compatible endpoint: http://localhost:8787
 
 The API key is still entered in the browser at runtime and forwarded through the local proxy; it is not stored in the proxy script.
 
-The default provider is **Ollama** for a more stable local workflow. **Gemma 4 Browser** is available for fully browser-local analysis through Transformers.js + WebGPU:
+The default provider is **Ollama** for a stable local workflow. **Gemma 4 Browser** is the judge-friendly static demo path for fully browser-local analysis through Transformers.js + WebGPU:
 
 - **Model**: `onnx-community/gemma-4-E2B-it-ONNX`
 - **Runtime**: `@huggingface/transformers` with WebGPU and `q4f16`
@@ -101,7 +109,7 @@ window.__DRMRIAI_PRINT_DEBUG_LOGS__()
 - **Cornerstone3D v4** — medical image rendering, viewport management, tools
 - **Gemini API** — optional hosted multimodal LLM for image analysis
 - **OpenAI-compatible endpoints** — optional hosted/private chat completions gateways with runtime BYOK credentials
-- **Ollama** — optional local model support
+- **Ollama** — optional local model support, including MedGemma planning and Gemma 4 vision when installed
 - **Gemma 4 Browser + Transformers.js/WebGPU** — optional browser-local on-device inference
 
 ## Deployment
