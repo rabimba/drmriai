@@ -1,0 +1,250 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="t d">
+  <title id="t">The Brain — One Gemma 4 model, three specialized calls</title>
+  <desc id="d">Architecture diagram for the Dr.MRI.AI brain. Three Gemma 4 calls (planner, reviewer, synthesizer) operate over one cached weight file. Shows the data transformations between calls including the SliceExporter sub-pipeline and the human-in-loop plan preview.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f3f7ff"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4285f4"/>
+      <stop offset="0.34" stop-color="#ea4335"/>
+      <stop offset="0.66" stop-color="#fbbc04"/>
+      <stop offset="1" stop-color="#34a853"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+    <linearGradient id="gemmaBand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4285f4"/>
+      <stop offset="0.5" stop-color="#1a73e8"/>
+      <stop offset="1" stop-color="#185abc"/>
+    </linearGradient>
+    <linearGradient id="brainScan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8f0fe"/>
+      <stop offset="0.5" stop-color="#8ab4f8"/>
+      <stop offset="1" stop-color="#1a73e8"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#174ea6" flood-opacity="0.12"/>
+    </filter>
+    <filter id="softer" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#174ea6" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerUnits="strokeWidth" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0 0 L12 6 L0 12 Z" fill="#5f6368"/>
+    </marker>
+    <marker id="arrowDown" viewBox="0 0 12 12" refX="6" refY="10" markerUnits="strokeWidth" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0 0 L6 12 L12 0 Z" fill="#5f6368"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+
+  <!-- =========== HEADER =========== -->
+  <g transform="translate(80 56)">
+    <g transform="translate(0 -36)">
+      <rect width="56" height="6" rx="3" fill="#4285f4"/>
+      <rect x="68" width="56" height="6" rx="3" fill="#ea4335"/>
+      <rect x="136" width="56" height="6" rx="3" fill="#fbbc04"/>
+      <rect x="204" width="56" height="6" rx="3" fill="#34a853"/>
+    </g>
+    <text x="0" y="0" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="3">THE BRAIN · DR.MRI.AI</text>
+    <text x="0" y="54" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900">One Gemma 4 model. Three specialized calls.</text>
+    <rect x="0" y="74" width="280" height="4" rx="2" fill="url(#accent)"/>
+  </g>
+
+  <!-- =========== UNIFIED MODEL BAND =========== -->
+  <g transform="translate(80 168)" filter="url(#softer)">
+    <rect width="1440" height="72" rx="18" fill="url(#gemmaBand)"/>
+
+    <!-- Gemma logo dot -->
+    <circle cx="44" cy="36" r="22" fill="#ffffff"/>
+    <text x="44" y="44" fill="#1967d2" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="900" text-anchor="middle">G4</text>
+
+    <text x="86" y="32" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="2">ONE CACHED MODEL · REUSED ACROSS ALL THREE CALLS</text>
+    <text x="86" y="56" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="500" opacity="0.95">gemma-4-E2B-it-ONNX · q4f16 · WebGPU · same weight file, three jobs</text>
+
+    <!-- right pills -->
+    <g transform="translate(1080 14)">
+      <rect width="100" height="44" rx="22" fill="#ffffff" opacity="0.18"/>
+      <text x="50" y="29" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1">PLANNER</text>
+    </g>
+    <g transform="translate(1192 14)">
+      <rect width="110" height="44" rx="22" fill="#ffffff" opacity="0.22"/>
+      <text x="55" y="29" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1">REVIEWER</text>
+    </g>
+    <g transform="translate(1314 14)">
+      <rect width="116" height="44" rx="22" fill="#ffffff" opacity="0.18"/>
+      <text x="58" y="29" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1">SYNTHESIZER</text>
+    </g>
+  </g>
+
+  <!-- =========== CALL COLUMNS =========== -->
+  <!-- Column geometry: 460 wide, gap 40. Start x=80. -->
+
+  <!-- ==== Column 1 — Planner (BLUE) ==== -->
+  <g transform="translate(80 268)" filter="url(#soft)">
+    <rect width="460" height="440" rx="20" fill="url(#panel)" stroke="#d2e3fc"/>
+    <rect width="460" height="64" rx="20" fill="#e8f0fe"/>
+    <rect y="42" width="460" height="22" fill="#e8f0fe"/>
+
+    <circle cx="34" cy="32" r="18" fill="#4285f4"/>
+    <text x="34" y="40" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900" text-anchor="middle">1</text>
+    <text x="64" y="28" fill="#1967d2" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2.5">CALL 1 · TEXT-ONLY</text>
+    <text x="64" y="50" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">The Planner</text>
+
+    <!-- INPUT label -->
+    <text x="24" y="98" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="2">INPUT · METADATA</text>
+
+    <!-- INPUT card -->
+    <rect x="24" y="108" width="412" height="78" rx="12" fill="#ffffff" stroke="#d2e3fc"/>
+    <text x="38" y="130" fill="#1967d2" font-family="JetBrains Mono, Consolas, monospace" font-size="11">StudyMetadata {</text>
+    <text x="50" y="148" fill="#5f6368" font-family="JetBrains Mono, Consolas, monospace" font-size="11">series, slices,</text>
+    <text x="50" y="164" fill="#5f6368" font-family="JetBrains Mono, Consolas, monospace" font-size="11">orientations, W/L</text>
+    <text x="38" y="180" fill="#1967d2" font-family="JetBrains Mono, Consolas, monospace" font-size="11">} + clinical hint</text>
+
+    <!-- DOWN ARROW -->
+    <line x1="230" y1="198" x2="230" y2="226" stroke="#5f6368" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+    <!-- CALL CORE -->
+    <rect x="24" y="234" width="412" height="118" rx="14" fill="#e8f0fe" stroke="#aecbfa"/>
+    <circle cx="56" cy="266" r="20" fill="#1967d2"/>
+    <text x="56" y="273" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="900" text-anchor="middle">G4</text>
+    <text x="90" y="262" fill="#1967d2" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="1.5">GEMMA 4 · TEXT REASONING</text>
+    <text x="90" y="282" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">Pick the right series, slice</text>
+    <text x="90" y="300" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">range, window/level.</text>
+    <text x="24" y="332" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-style="italic">→ MedGemma optional: domain-tuned for medical text</text>
+
+    <!-- DOWN ARROW -->
+    <line x1="230" y1="362" x2="230" y2="386" stroke="#5f6368" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+    <!-- OUTPUT card -->
+    <text x="24" y="394" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="2">OUTPUT · SELECTIONPLAN</text>
+    <rect x="24" y="402" width="412" height="28" rx="8" fill="#fef7e0" stroke="#fde293"/>
+    <text x="38" y="420" fill="#a56300" font-family="JetBrains Mono, Consolas, monospace" font-size="11">series: 8 · range: [13,27] · W/L: 1200/350</text>
+  </g>
+
+  <!-- arrow column 1 → column 2 -->
+  <line x1="556" y1="488" x2="592" y2="488" stroke="#5f6368" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- ==== Column 2 — Reviewer (YELLOW/ORANGE) ==== -->
+  <g transform="translate(580 268)" filter="url(#soft)">
+    <rect width="460" height="440" rx="20" fill="url(#panel)" stroke="#fce8b2"/>
+    <rect width="460" height="64" rx="20" fill="#fef7e0"/>
+    <rect y="42" width="460" height="22" fill="#fef7e0"/>
+
+    <circle cx="34" cy="32" r="18" fill="#fbbc04"/>
+    <text x="34" y="40" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900" text-anchor="middle">2</text>
+    <text x="64" y="28" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2.5">CALL 2 · MULTIMODAL</text>
+    <text x="64" y="50" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">The Reviewer</text>
+
+    <!-- SliceExporter sub-pipeline label -->
+    <text x="24" y="98" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="2">INPUT · SLICEEXPORTER PIPELINE</text>
+
+    <!-- 3 mini-step boxes for the SliceExporter -->
+    <g transform="translate(24 108)">
+      <!-- step 1: raw DICOM -->
+      <rect width="120" height="78" rx="10" fill="#ffffff" stroke="#d2e3fc"/>
+      <text x="60" y="22" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="800" letter-spacing="1.5" text-anchor="middle">RAW DICOM</text>
+      <text x="60" y="42" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800" text-anchor="middle">16-bit</text>
+      <text x="60" y="60" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">pixel data</text>
+      <path d="M126 39 L142 39" stroke="#5f6368" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- step 2: canvas window/level -->
+      <g transform="translate(146 0)">
+        <rect width="120" height="78" rx="10" fill="#ffffff" stroke="#fce8b2"/>
+        <text x="60" y="22" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="800" letter-spacing="1.5" text-anchor="middle">CANVAS · W/L</text>
+        <text x="60" y="42" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800" text-anchor="middle">windowed</text>
+        <text x="60" y="60" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">grayscale</text>
+        <path d="M126 39 L142 39" stroke="#5f6368" stroke-width="2" marker-end="url(#arrow)"/>
+      </g>
+
+      <!-- step 3: 8-bit JPEG -->
+      <g transform="translate(292 0)">
+        <rect width="120" height="78" rx="10" fill="#ffffff" stroke="#ceead6"/>
+        <text x="60" y="22" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="800" letter-spacing="1.5" text-anchor="middle">EXPORT</text>
+        <text x="60" y="42" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800" text-anchor="middle">8-bit JPEG</text>
+        <text x="60" y="60" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">≤768 px edge</text>
+      </g>
+    </g>
+
+    <!-- DOWN ARROW -->
+    <line x1="230" y1="198" x2="230" y2="226" stroke="#5f6368" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+    <!-- CALL CORE -->
+    <rect x="24" y="234" width="412" height="118" rx="14" fill="#fef7e0" stroke="#fde293"/>
+    <circle cx="56" cy="266" r="20" fill="#a56300"/>
+    <text x="56" y="273" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="900" text-anchor="middle">G4</text>
+    <text x="90" y="262" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="1.5">GEMMA 4 · MULTIMODAL VISION</text>
+    <text x="90" y="282" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">Review the planned slices in</text>
+    <text x="90" y="300" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">small batches with slice context.</text>
+    <text x="24" y="332" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-style="italic">batch size 4 · ~140 image tokens / JPEG</text>
+
+    <!-- DOWN ARROW -->
+    <line x1="230" y1="362" x2="230" y2="386" stroke="#5f6368" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+    <!-- OUTPUT card -->
+    <text x="24" y="394" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="2">OUTPUT · BATCH NOTES</text>
+    <rect x="24" y="402" width="412" height="28" rx="8" fill="#fef7e0" stroke="#fde293"/>
+    <text x="38" y="420" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="11">per-slice findings · structure observations · uncertainty</text>
+  </g>
+
+  <!-- arrow column 2 → column 3 -->
+  <line x1="1056" y1="488" x2="1092" y2="488" stroke="#5f6368" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- ==== Column 3 — Synthesizer (GREEN) ==== -->
+  <g transform="translate(1080 268)" filter="url(#soft)">
+    <rect width="460" height="440" rx="20" fill="url(#panel)" stroke="#ceead6"/>
+    <rect width="460" height="64" rx="20" fill="#e6f4ea"/>
+    <rect y="42" width="460" height="22" fill="#e6f4ea"/>
+
+    <circle cx="34" cy="32" r="18" fill="#34a853"/>
+    <text x="34" y="40" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900" text-anchor="middle">3</text>
+    <text x="64" y="28" fill="#188038" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2.5">CALL 3 · TEXT-ONLY</text>
+    <text x="64" y="50" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">The Synthesizer</text>
+
+    <!-- INPUT label -->
+    <text x="24" y="98" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="2">INPUT · CONCATENATED NOTES</text>
+
+    <!-- INPUT card -->
+    <rect x="24" y="108" width="412" height="78" rx="12" fill="#ffffff" stroke="#ceead6"/>
+    <text x="38" y="130" fill="#188038" font-family="JetBrains Mono, Consolas, monospace" font-size="11">batch_1: slice #13-16 ...</text>
+    <text x="38" y="150" fill="#188038" font-family="JetBrains Mono, Consolas, monospace" font-size="11">batch_2: slice #17-20 ...</text>
+    <text x="38" y="170" fill="#188038" font-family="JetBrains Mono, Consolas, monospace" font-size="11">batch_3: slice #21-24 ...</text>
+    <text x="38" y="180" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10">+ original clinical hint</text>
+
+    <!-- DOWN ARROW -->
+    <line x1="230" y1="198" x2="230" y2="226" stroke="#5f6368" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+    <!-- CALL CORE -->
+    <rect x="24" y="234" width="412" height="118" rx="14" fill="#e6f4ea" stroke="#a8dab5"/>
+    <circle cx="56" cy="266" r="20" fill="#188038"/>
+    <text x="56" y="273" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="900" text-anchor="middle">G4</text>
+    <text x="90" y="262" fill="#188038" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="1.5">GEMMA 4 · TEXT SYNTHESIS</text>
+    <text x="90" y="282" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">Merge batches into one report.</text>
+    <text x="90" y="300" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">Each finding must cite a slice.</text>
+    <text x="24" y="332" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-style="italic">no invention · no drift · grounded by construction</text>
+
+    <!-- DOWN ARROW -->
+    <line x1="230" y1="362" x2="230" y2="386" stroke="#5f6368" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+    <!-- OUTPUT card -->
+    <text x="24" y="394" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="2">OUTPUT · GROUNDED REPORT</text>
+    <rect x="24" y="402" width="412" height="28" rx="8" fill="#e6f4ea" stroke="#a8dab5"/>
+    <text x="38" y="420" fill="#188038" font-family="Inter, Arial, sans-serif" font-size="11">markdown + clickable slice refs · Evidence ZIP export</text>
+  </g>
+
+  <!-- =========== TRUST CONTRACT BAND between Call 1 and Call 2 =========== -->
+  <g transform="translate(80 740)">
+    <rect width="1440" height="80" rx="18" fill="#fef7e0" stroke="#fbbc04" stroke-opacity="0.5"/>
+    <circle cx="48" cy="40" r="20" fill="#fbbc04"/>
+    <text x="48" y="47" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="900" text-anchor="middle">!</text>
+    <text x="84" y="34" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">TRUST CONTRACT · BETWEEN CALL 1 AND CALL 2</text>
+    <text x="84" y="60" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="600">The SelectionPlan is shown to the user. They can accept, edit, or reject it before any pixel is sent to the multimodal call.</text>
+  </g>
+
+  <text x="80" y="868" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">Educational and research use only · Not a medical device · github.com/rabimba/drmriai</text>
+</svg>

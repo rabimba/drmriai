@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="280" viewBox="0 0 560 280" role="img" aria-labelledby="t d">
+  <title id="t">Dr.MRI.AI — Gemma 4 Good Hackathon</title>
+  <desc id="d">Card and thumbnail image for the Kaggle Writeup. Shows the Dr.MRI.AI title, Gemma 4 framing, and the 200+ to 16 evidence-selection result on a Google-color palette.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef5ff"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4285f4"/>
+      <stop offset="0.34" stop-color="#ea4335"/>
+      <stop offset="0.66" stop-color="#fbbc04"/>
+      <stop offset="1" stop-color="#34a853"/>
+    </linearGradient>
+    <linearGradient id="brain" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8f0fe"/>
+      <stop offset="0.5" stop-color="#8ab4f8"/>
+      <stop offset="1" stop-color="#1a73e8"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#174ea6" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect width="560" height="280" fill="url(#bg)"/>
+
+  <!-- atmospheric accents -->
+  <circle cx="520" cy="40" r="80" fill="#e8f0fe" opacity="0.7"/>
+  <circle cx="40" cy="260" r="60" fill="#fef7e0" opacity="0.7"/>
+
+  <!-- Google color top accent bars -->
+  <g transform="translate(24 22)">
+    <rect width="24" height="4" rx="2" fill="#4285f4"/>
+    <rect x="32" width="24" height="4" rx="2" fill="#ea4335"/>
+    <rect x="64" width="24" height="4" rx="2" fill="#fbbc04"/>
+    <rect x="96" width="24" height="4" rx="2" fill="#34a853"/>
+  </g>
+
+  <!-- HACKATHON tag -->
+  <text x="24" y="50" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="1.8">GEMMA 4 GOOD HACKATHON</text>
+
+  <!-- Title -->
+  <text x="24" y="92" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="900" letter-spacing="-0.5">Dr.MRI.AI</text>
+
+  <!-- Subtitle -->
+  <text x="24" y="116" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">Evidence-first review with Gemma 4</text>
+
+  <!-- accent underline -->
+  <rect x="24" y="128" width="180" height="3" rx="1.5" fill="url(#accent)"/>
+
+  <!-- stat row -->
+  <g transform="translate(24 160)">
+    <text x="0" y="32" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="900">200+</text>
+
+    <g transform="translate(95 12)">
+      <line x1="0" y1="10" x2="36" y2="10" stroke="#34a853" stroke-width="3" stroke-linecap="round"/>
+      <path d="M28 2 L36 10 L28 18" stroke="#34a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+
+    <text x="148" y="32" fill="#34a853" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="900">16</text>
+
+    <text x="0" y="52" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="600">slices · planned by Gemma 4</text>
+    <text x="0" y="68" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="500">WebGPU · zero upload · ~99% fewer tokens</text>
+  </g>
+
+  <!-- right side: scan render -->
+  <g transform="translate(360 60)" filter="url(#soft)">
+    <rect width="180" height="180" rx="14" fill="#0b1320"/>
+    <circle cx="90" cy="90" r="64" fill="url(#brain)"/>
+    <ellipse cx="90" cy="90" rx="40" ry="56" fill="#0b1320" opacity="0.35"/>
+    <path d="M28 90 H152 M90 28 V152" stroke="#fff" stroke-opacity="0.75" stroke-width="1.6"/>
+    <circle cx="90" cy="90" r="64" fill="none" stroke="#8ab4f8" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
+
+    <!-- corner labels -->
+    <rect x="10" y="10" width="48" height="18" rx="4" fill="#0b1320" opacity="0.7" stroke="#aecbfa" stroke-opacity="0.4"/>
+    <text x="34" y="22" fill="#aecbfa" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">#22</text>
+
+    <rect x="118" y="152" width="52" height="18" rx="4" fill="#0b1320" opacity="0.7" stroke="#aecbfa" stroke-opacity="0.4"/>
+    <text x="144" y="164" fill="#aecbfa" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">DICOM</text>
+  </g>
+
+  <!-- bottom-left model badge -->
+  <g transform="translate(24 252)">
+    <text x="0" y="0" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="500">gemma-4-E2B-it-ONNX · Transformers.js · MedGemma option</text>
+  </g>
+</svg>

@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="t d">
+  <title id="t">Dr.MRI.AI architecture — three Gemma 4 calls, one cached model</title>
+  <desc id="d">Architecture diagram showing the three-call Gemma 4 pipeline: metadata planner, multimodal batched reviewer, and text-only synthesis.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f3f7ff"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4285f4"/>
+      <stop offset="0.34" stop-color="#ea4335"/>
+      <stop offset="0.66" stop-color="#fbbc04"/>
+      <stop offset="1" stop-color="#34a853"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#174ea6" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerUnits="strokeWidth" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0 0 L12 6 L0 12 Z" fill="#5f6368"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+
+  <!-- header -->
+  <g transform="translate(80 64)">
+    <g transform="translate(0 -42)">
+      <rect width="64" height="6" rx="3" fill="#4285f4"/>
+      <rect x="76" width="64" height="6" rx="3" fill="#ea4335"/>
+      <rect x="152" width="64" height="6" rx="3" fill="#fbbc04"/>
+      <rect x="228" width="64" height="6" rx="3" fill="#34a853"/>
+    </g>
+    <text x="0" y="0" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800" letter-spacing="3">DR.MRI.AI · ARCHITECTURE</text>
+    <text x="0" y="62" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="46" font-weight="900">Three Gemma 4 calls. One cached model. Zero uploads.</text>
+    <rect x="0" y="90" width="340" height="4" rx="2" fill="url(#accent)"/>
+  </g>
+
+  <!-- =========== ROW: input → 3 stages → output =========== -->
+  <!-- Input card -->
+  <g transform="translate(80 230)" filter="url(#soft)">
+    <rect width="220" height="240" rx="20" fill="url(#panel)" stroke="#d2e3fc"/>
+    <rect width="6" height="240" rx="3" fill="#5f6368"/>
+    <text x="26" y="38" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">INPUT</text>
+    <text x="26" y="76" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">DICOM study</text>
+    <text x="26" y="106" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">200+ slices</text>
+    <text x="26" y="128" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">8 series</text>
+    <text x="26" y="150" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">Multiple planes</text>
+    <rect x="26" y="172" width="170" height="44" rx="10" fill="#fef7e0"/>
+    <text x="38" y="200" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700">+ one-sentence question</text>
+  </g>
+
+  <!-- arrow 1 -->
+  <line x1="306" y1="350" x2="358" y2="350" stroke="#5f6368" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- Stage 1 -->
+  <g transform="translate(360 230)" filter="url(#soft)">
+    <rect width="280" height="240" rx="20" fill="url(#panel)" stroke="#d2e3fc"/>
+    <rect width="6" height="240" rx="3" fill="#4285f4"/>
+    <text x="26" y="38" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">CALL 1 · TEXT-ONLY</text>
+    <text x="26" y="76" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Metadata planner</text>
+    <text x="26" y="106" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">Reads structured DICOM tags,</text>
+    <text x="26" y="126" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">plane cosines, viewport context.</text>
+    <text x="26" y="158" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">Outputs JSON SelectionPlan:</text>
+    <text x="26" y="184" fill="#1967d2" font-family="JetBrains Mono, Consolas, monospace" font-size="12">series · range · sampling · W/L</text>
+    <rect x="26" y="200" width="226" height="28" rx="8" fill="#e8f0fe"/>
+    <text x="38" y="219" fill="#1967d2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700">≤ 512 output tokens</text>
+  </g>
+
+  <!-- arrow 2 -->
+  <line x1="646" y1="350" x2="698" y2="350" stroke="#5f6368" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- Stage 2 -->
+  <g transform="translate(700 230)" filter="url(#soft)">
+    <rect width="280" height="240" rx="20" fill="url(#panel)" stroke="#fce8b2"/>
+    <rect width="6" height="240" rx="3" fill="#fbbc04"/>
+    <text x="26" y="38" fill="#ea8f00" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">CALL 2 · MULTIMODAL</text>
+    <text x="26" y="76" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Batched reviewer</text>
+    <text x="26" y="106" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">Only the 16 selected JPEGs,</text>
+    <text x="26" y="126" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">windowed and labeled.</text>
+    <text x="26" y="158" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">Reviewed in batches of 4 with</text>
+    <text x="26" y="178" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">slice-position context.</text>
+    <rect x="26" y="200" width="226" height="28" rx="8" fill="#fef7e0"/>
+    <text x="38" y="219" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700">~140 tokens / image</text>
+  </g>
+
+  <!-- arrow 3 -->
+  <line x1="986" y1="350" x2="1038" y2="350" stroke="#5f6368" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- Stage 3 -->
+  <g transform="translate(1040 230)" filter="url(#soft)">
+    <rect width="280" height="240" rx="20" fill="url(#panel)" stroke="#ceead6"/>
+    <rect width="6" height="240" rx="3" fill="#34a853"/>
+    <text x="26" y="38" fill="#188038" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">CALL 3 · TEXT-ONLY</text>
+    <text x="26" y="76" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Synthesis</text>
+    <text x="26" y="106" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">Merges batch notes into one</text>
+    <text x="26" y="126" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">grounded educational report.</text>
+    <text x="26" y="158" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">Findings MUST cite a slice</text>
+    <text x="26" y="178" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="14">label from the notes.</text>
+    <rect x="26" y="200" width="226" height="28" rx="8" fill="#e6f4ea"/>
+    <text x="38" y="219" fill="#188038" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700">No invented findings</text>
+  </g>
+
+  <!-- arrow 4 -->
+  <line x1="1326" y1="350" x2="1378" y2="350" stroke="#5f6368" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- Output card -->
+  <g transform="translate(1380 230)" filter="url(#soft)">
+    <rect width="140" height="240" rx="20" fill="url(#panel)" stroke="#d2e3fc"/>
+    <rect width="6" height="240" rx="3" fill="url(#accent)"/>
+    <text x="20" y="38" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">OUTPUT</text>
+    <text x="20" y="76" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">Report</text>
+    <text x="20" y="100" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">+ slice refs</text>
+    <text x="20" y="122" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">+ JSON</text>
+    <text x="20" y="144" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">+ JPEGs</text>
+    <rect x="20" y="160" width="100" height="28" rx="8" fill="#e8f0fe"/>
+    <text x="32" y="178" fill="#1967d2" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">Evidence ZIP</text>
+  </g>
+
+  <!-- =========== HUMAN-IN-LOOP BAND =========== -->
+  <g transform="translate(80 510)">
+    <rect width="1440" height="84" rx="18" fill="#fef7e0" stroke="#fbbc04" stroke-opacity="0.4"/>
+    <circle cx="48" cy="42" r="22" fill="#fbbc04"/>
+    <text x="48" y="49" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" text-anchor="middle">!</text>
+    <text x="90" y="38" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="2">TRUST CONTRACT · BETWEEN CALL 1 AND CALL 2</text>
+    <text x="90" y="64" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">The SelectionPlan is shown to the user. They can accept, edit, or reject it before any image is sent for review.</text>
+  </g>
+
+  <!-- =========== BOTTOM BAND: MODEL + RUNTIME =========== -->
+  <g transform="translate(80 630)" filter="url(#soft)">
+    <rect width="1440" height="180" rx="22" fill="url(#panel)" stroke="#d2e3fc"/>
+
+    <text x="32" y="44" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="2.5">RUNTIME LAYER · ONE CACHED MODEL POWERS ALL THREE CALLS</text>
+
+    <g transform="translate(32 70)">
+      <rect width="320" height="90" rx="14" fill="#ffffff" stroke="#d2e3fc"/>
+      <rect width="8" height="90" rx="4" fill="#4285f4"/>
+      <text x="28" y="32" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">PUBLIC DEMO PATH</text>
+      <text x="28" y="58" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">gemma-4-E2B-it-ONNX</text>
+      <text x="28" y="78" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">Transformers.js · WebGPU · q4f16</text>
+    </g>
+
+    <g transform="translate(372 70)">
+      <rect width="320" height="90" rx="14" fill="#ffffff" stroke="#ceead6"/>
+      <rect width="8" height="90" rx="4" fill="#34a853"/>
+      <text x="28" y="32" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">VIEWER</text>
+      <text x="28" y="58" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">Cornerstone3D v4</text>
+      <text x="28" y="78" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">WebGL render · windowed JPEG export</text>
+    </g>
+
+    <g transform="translate(712 70)">
+      <rect width="320" height="90" rx="14" fill="#ffffff" stroke="#fce8b2"/>
+      <rect width="8" height="90" rx="4" fill="#fbbc04"/>
+      <text x="28" y="32" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">ADVANCED LOCAL</text>
+      <text x="28" y="58" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">MedGemma 4B · Gemma 4</text>
+      <text x="28" y="78" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">Ollama · split text + vision</text>
+    </g>
+
+    <g transform="translate(1052 70)">
+      <rect width="356" height="90" rx="14" fill="#ffffff" stroke="#fad2cf"/>
+      <rect width="8" height="90" rx="4" fill="#ea4335"/>
+      <text x="28" y="32" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">PRIVACY</text>
+      <text x="28" y="58" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">Zero upload, zero server</text>
+      <text x="28" y="78" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">DICOM stays on the user's device. No API key.</text>
+    </g>
+  </g>
+
+  <text x="80" y="868" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="500">Educational and research use only · Not a medical device · Gemma 4 Good Hackathon · Impact Track · Health &amp; Sciences</text>
+</svg>

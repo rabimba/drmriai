@@ -129,6 +129,168 @@ function parseSelectionPlan(raw: string): SelectionPlan {
   return populateLegacyFields([selection], selection.rationale, 0);
 }
 
+type PlanningSeries = StudyMetadata['series'][number];
+
+function includesAny(value: string, terms: string[]): boolean {
+  return terms.some((term) => value.includes(term));
+}
+
+function isFallbackDiagnosticSeries(series: PlanningSeries): boolean {
+  const description = series.seriesDescription.toLowerCase();
+  return !series.isScout && !/\b(loc|localizer|scout|survey|topogram|pilot)\b/.test(description);
+}
+
+function fallbackWindow(series: PlanningSeries, hint: string): { windowCenter: number; windowWidth: number } {
+  if (series.windowCenter != null && series.windowWidth != null) {
+    return {
+      windowCenter: Math.round(series.windowCenter),
+      windowWidth: Math.max(1, Math.round(series.windowWidth)),
+    };
+  }
+
+  if (series.modality.toUpperCase() === 'CT') {
+    if (includesAny(hint, ['lung', 'pulmonary', 'nodule', 'emphysema'])) {
+      return { windowCenter: -600, windowWidth: 1500 };
+    }
+    if (includesAny(hint, ['bone', 'fracture', 'osseous'])) {
+      return { windowCenter: 400, windowWidth: 2000 };
+    }
+    return { windowCenter: 40, windowWidth: 400 };
+  }
+
+  return { windowCenter: 400, windowWidth: 800 };
+}
+
+function fallbackRange(series: PlanningSeries, broadSurvey: boolean): [number, number] {
+  const slices = [...series.slices].sort((a, b) => a.instanceNumber - b.instanceNumber);
+  if (slices.length === 0) return series.instanceNumberRange;
+  if (broadSurvey || slices.length <= 8) return series.instanceNumberRange;
+
+  const startIndex = Math.max(0, Math.floor((slices.length - 1) * 0.15));
+  const endIndex = Math.min(slices.length - 1, Math.ceil((slices.length - 1) * 0.85));
+  const start = slices[startIndex]?.instanceNumber ?? series.instanceNumberRange[0];
+  const end = slices[endIndex]?.instanceNumber ?? series.instanceNumberRange[1];
+  return start <= end ? [start, end] : [end, start];
+}
+
+function scoreFallbackSeries(series: PlanningSeries, hint: string): number {
+  const description = series.seriesDescription.toLowerCase();
+  const text = `${description} ${series.estimatedWeighting ?? ''} ${series.anatomicalPlane}`.toLowerCase();
+  let score = Math.max(0, series.priorityScore);
+
+  if (series.modality.toUpperCase() === 'MR') {
+    if (includesAny(hint, ['knee', 'acl', 'pcl', 'mcl', 'lcl', 'meniscus', 'meniscal', 'cartilage', 'patellar', 'effusion'])) {
+      if (series.anatomicalPlane === 'sagittal') score += 6;
+      if (series.anatomicalPlane === 'coronal') score += 4;
+      if (series.anatomicalPlane === 'axial') score += 2;
+      if (/\bpd\b|proton/.test(text)) score += 5;
+      if (/fs|fat.?sat|stir/.test(text)) score += 5;
+      if (/\bt2\b/.test(text)) score += 3;
+      if (/\bt1\b/.test(text)) score -= 2;
+      if (includesAny(hint, ['acl', 'pcl']) && series.anatomicalPlane === 'sagittal') score += 5;
+      if (includesAny(hint, ['meniscus', 'meniscal', 'mcl', 'lcl']) && series.anatomicalPlane === 'coronal') score += 3;
+      if (includesAny(hint, ['effusion', 'patellar']) && series.anatomicalPlane === 'axial') score += 2;
+    } else {
+      if (series.anatomicalPlane === 'sagittal') score += 2;
+      if (/fs|fat.?sat|stir|\bt2\b|\bpd\b/.test(text)) score += 3;
+    }
+  } else if (series.modality.toUpperCase() === 'CT') {
+    if (series.anatomicalPlane === 'axial') score += 6;
+    if (includesAny(hint, ['lung', 'pulmonary', 'nodule']) && /lung|chest/.test(text)) score += 5;
+    if (includesAny(hint, ['bone', 'fracture']) && /bone|sharp/.test(text)) score += 5;
+    if (includesAny(hint, ['liver', 'abdomen', 'hcc']) && /soft|abd|venous|portal/.test(text)) score += 5;
+  }
+
+  score += Math.min(series.slices.length / 20, 3);
+  return score;
+}
+
+function chooseFallbackSeries(metadata: StudyMetadata, clinicalHint: string): PlanningSeries[] {
+  const hint = `${clinicalHint} ${metadata.bodyPartExamined ?? ''} ${metadata.studyDescription ?? ''}`.toLowerCase();
+  const broadSurvey = includesAny(hint, ['systematic', 'survey', 'all structures', 'each of the following', 'screen']);
+  const diagnostic = metadata.series
+    .filter(isFallbackDiagnosticSeries)
+    .sort((a, b) => scoreFallbackSeries(b, hint) - scoreFallbackSeries(a, hint));
+
+  const candidates = diagnostic.length > 0
+    ? diagnostic
+    : [...metadata.series].sort((a, b) => b.priorityScore - a.priorityScore);
+
+  const chosen: PlanningSeries[] = [];
+  const maxSeries = broadSurvey ? 3 : 2;
+  for (const series of candidates) {
+    if (chosen.some((item) => item.seriesNumber === series.seriesNumber)) continue;
+    if (
+      chosen.length > 0 &&
+      chosen.some((item) => item.anatomicalPlane === series.anatomicalPlane) &&
+      !broadSurvey
+    ) {
+      continue;
+    }
+    chosen.push(series);
+    if (chosen.length >= maxSeries) break;
+  }
+
+  return chosen.length > 0 ? chosen : metadata.series.slice(0, 1);
+}
+
+function allocateFallbackCounts(series: PlanningSeries[], maxImages: number): number[] {
+  const budget = Math.max(1, Math.min(20, Math.round(maxImages)));
+  if (series.length === 0) return [];
+  if (series.length === 1) return [Math.min(budget, series[0].slices.length || budget)];
+
+  let remaining = budget;
+  return series.map((item, index) => {
+    const slotsLeft = series.length - index - 1;
+    if (index === series.length - 1) {
+      return Math.max(1, Math.min(item.slices.length || remaining, remaining));
+    }
+
+    const preferred = series.length === 2
+      ? Math.ceil(budget * (index === 0 ? 0.65 : 0.35))
+      : index === 0
+        ? Math.ceil(budget * 0.5)
+        : Math.ceil(budget * 0.25);
+    const count = Math.max(1, Math.min(item.slices.length || preferred, preferred, remaining - slotsLeft));
+    remaining -= count;
+    return count;
+  });
+}
+
+function buildFallbackSelectionPlan(
+  metadata: StudyMetadata,
+  clinicalHint: string,
+  maxImages: number,
+): SelectionPlan {
+  const hint = `${clinicalHint} ${metadata.bodyPartExamined ?? ''} ${metadata.studyDescription ?? ''}`.toLowerCase();
+  const broadSurvey = includesAny(hint, ['systematic', 'survey', 'all structures', 'each of the following', 'screen']);
+  const series = chooseFallbackSeries(metadata, clinicalHint);
+  const counts = allocateFallbackCounts(series, maxImages);
+  const selections: SeriesSelection[] = series.map((item, index) => {
+    const window = fallbackWindow(item, hint);
+    return {
+      seriesNumber: String(item.seriesNumber),
+      role: index === 0 ? 'primary' : 'supplementary',
+      rationale: index === 0
+        ? 'Metadata-based fallback selected the highest-scoring diagnostic series after Gemma Browser returned non-JSON.'
+        : 'Metadata-based fallback added a complementary diagnostic series.',
+      sliceRange: fallbackRange(item, broadSurvey),
+      samplingStrategy: 'uniform',
+      samplingParam: Math.max(1, counts[index] ?? 1),
+      windowCenter: window.windowCenter,
+      windowWidth: window.windowWidth,
+    };
+  });
+
+  const totalImages = counts.reduce((sum, count) => sum + count, 0);
+  const reasoning = [
+    'Gemma Browser returned a non-JSON planning response, so Dr.MRI.AI used a metadata heuristic fallback.',
+    'The fallback excludes scout/localizer series, prefers diagnostic orientation/weighting for the prompt, and keeps the browser image budget bounded.',
+  ].join(' ');
+
+  return populateLegacyFields(selections, reasoning, totalImages);
+}
+
 function extractChatCompletionText(data: { choices?: Array<{ message?: { content?: unknown } }> }): string {
   const content = data.choices?.[0]?.message?.content;
   if (typeof content === 'string') return content;
@@ -1179,7 +1341,16 @@ class GemmaTransformersService implements LLMService {
       rawResponse: response,
       rawPreview: response.slice(0, 4000),
     });
-    return parseSelectionPlan(response);
+    try {
+      return parseSelectionPlan(response);
+    } catch (error) {
+      debugLog('warn', 'GemmaTransformers', 'Gemma Browser returned non-JSON selection output; using metadata fallback plan.', {
+        error: error instanceof Error ? error.message : String(error),
+        rawResponse: response,
+        rawPreview: response.slice(0, 4000),
+      });
+      return buildFallbackSelectionPlan(metadata, clinicalHint, this.maxImages);
+    }
   }
 
   async analyzeSlices(

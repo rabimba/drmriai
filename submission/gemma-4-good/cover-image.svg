@@ -1,101 +1,210 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Dr.MRI.AI Gemma 4 Good Hackathon Cover</title>
-  <desc id="desc">Google-color inspired Gemma 4 Good cover showing a DICOM viewer, Gemma 4 Browser, and privacy-first slice triage.</desc>
+  <title id="title">Dr.MRI.AI — Evidence-first medical imaging with Gemma 4</title>
+  <desc id="desc">Gemma 4 Good Hackathon cover image. Shows the Dr.MRI.AI evidence-first pipeline: 200 DICOM slices reduced to 16 selected slices via a Gemma 4 planner running in the browser on WebGPU.</desc>
+
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.52" stop-color="#f3f7ff"/>
-      <stop offset="1" stop-color="#eef7f1"/>
+      <stop offset="0.55" stop-color="#f4f8ff"/>
+      <stop offset="1" stop-color="#edf6f1"/>
     </linearGradient>
-    <linearGradient id="scan" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#e8f0fe"/>
-      <stop offset="0.46" stop-color="#8ab4f8"/>
-      <stop offset="1" stop-color="#185abc"/>
-    </linearGradient>
+
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#4285f4"/>
       <stop offset="0.34" stop-color="#ea4335"/>
       <stop offset="0.66" stop-color="#fbbc04"/>
       <stop offset="1" stop-color="#34a853"/>
     </linearGradient>
-    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#f8fbff"/>
+
+    <linearGradient id="brainScan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8f0fe"/>
+      <stop offset="0.5" stop-color="#8ab4f8"/>
+      <stop offset="1" stop-color="#1a73e8"/>
     </linearGradient>
+
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f7fafc"/>
+    </linearGradient>
+
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0" stop-color="#4285f4" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#4285f4" stop-opacity="0"/>
+    </radialGradient>
+
     <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#174ea6" flood-opacity="0.16"/>
+      <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#174ea6" flood-opacity="0.14"/>
+    </filter>
+
+    <filter id="softer" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#174ea6" flood-opacity="0.10"/>
     </filter>
   </defs>
 
+  <!-- background -->
   <rect width="1600" height="900" fill="url(#bg)"/>
-  <circle cx="1270" cy="185" r="210" fill="#e8f0fe" opacity="0.95"/>
-  <circle cx="1405" cy="385" r="150" fill="#e6f4ea" opacity="0.95"/>
-  <circle cx="236" cy="720" r="145" fill="#fef7e0" opacity="0.92"/>
-  <path d="M0 724 C210 642 380 690 560 604 C780 502 1000 584 1210 498 C1390 425 1510 449 1600 404 L1600 900 L0 900 Z" fill="#e8f0fe" opacity="0.84"/>
-  <path d="M0 790 C245 704 440 742 635 650 C835 558 1030 638 1245 548 C1410 478 1535 500 1600 465 L1600 900 L0 900 Z" fill="#e6f4ea" opacity="0.9"/>
 
-  <g transform="translate(88 92)">
-    <g transform="translate(0 -50)">
+  <!-- atmospheric blobs -->
+  <circle cx="1320" cy="170" r="240" fill="#e8f0fe" opacity="0.85"/>
+  <circle cx="1440" cy="430" r="170" fill="#e6f4ea" opacity="0.85"/>
+  <circle cx="180" cy="760" r="180" fill="#fef7e0" opacity="0.78"/>
+  <circle cx="540" cy="100" r="120" fill="#fce8e6" opacity="0.55"/>
+
+  <!-- gentle landscape waves -->
+  <path d="M0 740 C220 660 410 700 590 620 C800 524 1020 600 1240 514 C1420 444 1530 466 1600 422 L1600 900 L0 900 Z" fill="#e8f0fe" opacity="0.78"/>
+  <path d="M0 800 C260 716 460 752 660 660 C870 568 1060 642 1280 562 C1430 502 1550 514 1600 482 L1600 900 L0 900 Z" fill="#e6f4ea" opacity="0.88"/>
+
+  <!-- ============== LEFT COLUMN ============== -->
+  <g transform="translate(86 96)">
+    <!-- Google-color top accent bars -->
+    <g transform="translate(0 -54)">
       <rect x="0" y="0" width="86" height="8" rx="4" fill="#4285f4"/>
       <rect x="98" y="0" width="86" height="8" rx="4" fill="#ea4335"/>
       <rect x="196" y="0" width="86" height="8" rx="4" fill="#fbbc04"/>
       <rect x="294" y="0" width="86" height="8" rx="4" fill="#34a853"/>
     </g>
-    <text x="0" y="0" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">GEMMA 4 GOOD HACKATHON</text>
-    <text x="0" y="98" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="88" font-weight="800">Dr.MRI.AI</text>
-    <text x="0" y="156" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="500">Evidence-first review with Gemma 4</text>
-    <rect x="0" y="206" width="470" height="4" rx="2" fill="url(#accent)"/>
-    <text x="0" y="278" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="28">Plan first. Review the evidence. Keep images local.</text>
-  </g>
 
-  <g transform="translate(835 96)" filter="url(#soft)">
-    <rect x="0" y="0" width="642" height="552" rx="26" fill="url(#panel)" stroke="#d2e3fc" stroke-width="2"/>
-    <rect x="26" y="28" width="590" height="58" rx="14" fill="#ffffff" stroke="#e8eaed"/>
-    <circle cx="60" cy="57" r="9" fill="#ea4335"/>
-    <circle cx="91" cy="57" r="9" fill="#fbbc04"/>
-    <circle cx="122" cy="57" r="9" fill="#34a853"/>
-    <text x="160" y="67" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="700">Gemma 4 Browser Pipeline</text>
+    <text x="0" y="0" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="3.5">GEMMA 4 GOOD HACKATHON · IMPACT TRACK</text>
 
-    <g transform="translate(34 126)">
-      <rect x="0" y="0" width="270" height="180" rx="16" fill="#ffffff" stroke="#d2e3fc"/>
-      <circle cx="135" cy="90" r="64" fill="url(#scan)" opacity="0.88"/>
-      <ellipse cx="135" cy="90" rx="42" ry="58" fill="#174ea6" opacity="0.42"/>
-      <path d="M81 90 H189 M135 36 V144" stroke="#ffffff" stroke-opacity="0.72" stroke-width="2"/>
-      <text x="18" y="158" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="18">DICOM viewer</text>
-    </g>
+    <text x="0" y="106" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="104" font-weight="900" letter-spacing="-2">Dr.MRI.AI</text>
 
-    <g transform="translate(338 126)">
-      <rect x="0" y="0" width="270" height="180" rx="16" fill="#ffffff" stroke="#fce8b2"/>
-      <path d="M48 48 H222" stroke="#4285f4" stroke-width="10" stroke-linecap="round"/>
-      <path d="M48 84 H178" stroke="#ea4335" stroke-width="10" stroke-linecap="round"/>
-      <path d="M48 120 H208" stroke="#fbbc04" stroke-width="10" stroke-linecap="round"/>
-      <path d="M74 148 C110 120 142 176 196 136" fill="none" stroke="#34a853" stroke-width="7" stroke-linecap="round"/>
-      <text x="18" y="158" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="18">Structured plan</text>
-    </g>
+    <text x="0" y="172" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="600">Evidence-first review with Gemma 4</text>
 
-    <g transform="translate(34 344)">
-      <rect x="0" y="0" width="574" height="142" rx="18" fill="#ffffff" stroke="#ceead6"/>
-      <rect x="25" y="28" width="128" height="86" rx="10" fill="#e8f0fe"/>
-      <rect x="175" y="28" width="128" height="86" rx="10" fill="#fce8e6"/>
-      <rect x="325" y="28" width="128" height="86" rx="10" fill="#fef7e0"/>
-      <path d="M58 71 H120" stroke="#4285f4" stroke-width="4" stroke-linecap="round"/>
-      <path d="M208 71 H270" stroke="#ea4335" stroke-width="4" stroke-linecap="round"/>
-      <path d="M358 71 H420" stroke="#fbbc04" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="501" cy="70" r="34" fill="none" stroke="url(#accent)" stroke-width="8"/>
-      <path d="M492 70 L502 82 L522 54" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="25" y="124" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="18">Evidence-limited multimodal review</text>
+    <rect x="0" y="200" width="520" height="5" rx="2.5" fill="url(#accent)"/>
+
+    <text x="0" y="262" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">Plan the evidence first.</text>
+    <text x="0" y="294" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">Review only what matters.</text>
+    <text x="0" y="326" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">Never upload the patient's scan.</text>
+
+    <!-- KEY STAT CARD -->
+    <g transform="translate(0 376)" filter="url(#softer)">
+      <rect x="0" y="0" width="640" height="172" rx="22" fill="url(#panel)" stroke="#d2e3fc"/>
+      <rect x="0" y="0" width="8" height="172" rx="4" fill="#4285f4"/>
+
+      <text x="40" y="38" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2.5">EVIDENCE SELECTION RESULT</text>
+
+      <!-- left number group -->
+      <text x="40" y="104" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="62" font-weight="900">200+</text>
+
+      <!-- arrow -->
+      <g transform="translate(230 76)">
+        <line x1="0" y1="14" x2="58" y2="14" stroke="#34a853" stroke-width="5" stroke-linecap="round"/>
+        <path d="M44 2 L58 14 L44 26" stroke="#34a853" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </g>
+
+      <!-- right number group -->
+      <text x="320" y="104" fill="#34a853" font-family="Inter, Arial, sans-serif" font-size="62" font-weight="900">16</text>
+
+      <!-- single subtitle line -->
+      <text x="40" y="138" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600">200+ DICOM slices reduced to 16 evidence frames sent to Gemma 4.</text>
+      <text x="40" y="160" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="500">~99% fewer image tokens · all on-device · WebGPU</text>
     </g>
   </g>
 
-  <g transform="translate(88 690)">
-    <rect x="0" y="0" width="370" height="72" rx="18" fill="#ffffff" stroke="#d2e3fc"/>
-    <rect x="0" y="0" width="10" height="72" rx="5" fill="#4285f4"/>
-    <text x="28" y="45" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">Gemma 4 E2B-it ONNX</text>
-    <rect x="400" y="0" width="260" height="72" rx="18" fill="#ffffff" stroke="#ceead6"/>
-    <rect x="400" y="0" width="10" height="72" rx="5" fill="#34a853"/>
-    <text x="428" y="45" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">WebGPU</text>
-    <rect x="690" y="0" width="330" height="72" rx="18" fill="#ffffff" stroke="#fce8b2"/>
-    <rect x="690" y="0" width="10" height="72" rx="5" fill="#fbbc04"/>
-    <text x="718" y="45" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">MedGemma option</text>
+  <!-- ============== RIGHT COLUMN — Pipeline panel ============== -->
+  <g transform="translate(835 86)" filter="url(#soft)">
+    <rect x="0" y="0" width="680" height="640" rx="28" fill="url(#panel)" stroke="#d2e3fc" stroke-width="2"/>
+
+    <!-- title bar -->
+    <rect x="26" y="26" width="628" height="58" rx="14" fill="#ffffff" stroke="#e8eaed"/>
+    <circle cx="60" cy="55" r="9" fill="#ea4335"/>
+    <circle cx="91" cy="55" r="9" fill="#fbbc04"/>
+    <circle cx="122" cy="55" r="9" fill="#34a853"/>
+    <text x="162" y="64" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Gemma 4 Browser Pipeline</text>
+    <text x="628" y="64" fill="#34a853" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="end">● WEBGPU</text>
+
+    <!-- ROW 1: viewer + plan side by side -->
+    <g transform="translate(32 114)">
+      <!-- DICOM viewer card -->
+      <rect x="0" y="0" width="290" height="200" rx="18" fill="#0b1320" stroke="#d2e3fc"/>
+      <circle cx="145" cy="100" r="76" fill="url(#brainScan)" opacity="0.92"/>
+      <ellipse cx="145" cy="100" rx="48" ry="64" fill="#0b1320" opacity="0.32"/>
+      <path d="M86 100 H204 M145 41 V159" stroke="#ffffff" stroke-opacity="0.65" stroke-width="2"/>
+      <circle cx="145" cy="100" r="76" fill="none" stroke="#8ab4f8" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.6"/>
+      <text x="16" y="184" fill="#aecbfa" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">DICOM · series 8 · sag PD-FS</text>
+
+      <!-- arrow -->
+      <g transform="translate(296 92)">
+        <rect x="0" y="0" width="20" height="16" rx="3" fill="#4285f4" opacity="0.18"/>
+        <path d="M2 8 L18 8 M12 3 L18 8 L12 13" stroke="#4285f4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </g>
+
+      <!-- SelectionPlan card -->
+      <rect x="328" y="0" width="290" height="200" rx="18" fill="#ffffff" stroke="#fce8b2"/>
+      <text x="346" y="32" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">SELECTIONPLAN</text>
+      <text x="346" y="56" fill="#202124" font-family="JetBrains Mono, Consolas, monospace" font-size="13">{</text>
+      <text x="358" y="76" fill="#1967d2" font-family="JetBrains Mono, Consolas, monospace" font-size="13">"series": <tspan fill="#34a853">"8"</tspan>,</text>
+      <text x="358" y="96" fill="#1967d2" font-family="JetBrains Mono, Consolas, monospace" font-size="13">"range": <tspan fill="#34a853">[13, 27]</tspan>,</text>
+      <text x="358" y="116" fill="#1967d2" font-family="JetBrains Mono, Consolas, monospace" font-size="13">"sampling": <tspan fill="#34a853">"uniform"</tspan>,</text>
+      <text x="358" y="136" fill="#1967d2" font-family="JetBrains Mono, Consolas, monospace" font-size="13">"window": <tspan fill="#34a853">1200/350</tspan></text>
+      <text x="346" y="156" fill="#202124" font-family="JetBrains Mono, Consolas, monospace" font-size="13">}</text>
+      <text x="346" y="184" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">Plan shown before any image is reviewed</text>
+    </g>
+
+    <!-- ROW 2: evidence-limited multimodal review -->
+    <g transform="translate(32 344)">
+      <rect x="0" y="0" width="618" height="172" rx="18" fill="#ffffff" stroke="#ceead6"/>
+      <text x="22" y="30" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">CALL 2 · MULTIMODAL REVIEW (BATCHES OF 4)</text>
+
+      <!-- 4 mini slice thumbnails -->
+      <g transform="translate(22 52)">
+        <rect x="0" y="0" width="100" height="86" rx="10" fill="#e8f0fe"/>
+        <circle cx="50" cy="43" r="26" fill="#8ab4f8" opacity="0.85"/>
+        <path d="M30 43 H70 M50 23 V63" stroke="#fff" stroke-opacity="0.7" stroke-width="1.5"/>
+
+        <rect x="116" y="0" width="100" height="86" rx="10" fill="#fce8e6"/>
+        <circle cx="166" cy="43" r="26" fill="#f28b82" opacity="0.85"/>
+        <path d="M146 43 H186 M166 23 V63" stroke="#fff" stroke-opacity="0.7" stroke-width="1.5"/>
+
+        <rect x="232" y="0" width="100" height="86" rx="10" fill="#fef7e0"/>
+        <circle cx="282" cy="43" r="26" fill="#fdd663" opacity="0.92"/>
+        <path d="M262 43 H302 M282 23 V63" stroke="#fff" stroke-opacity="0.7" stroke-width="1.5"/>
+
+        <rect x="348" y="0" width="100" height="86" rx="10" fill="#e6f4ea"/>
+        <circle cx="398" cy="43" r="26" fill="#81c995" opacity="0.92"/>
+        <path d="M378 43 H418 M398 23 V63" stroke="#fff" stroke-opacity="0.7" stroke-width="1.5"/>
+
+        <!-- check badge -->
+        <circle cx="528" cy="43" r="38" fill="none" stroke="url(#accent)" stroke-width="9"/>
+        <path d="M512 43 L526 57 L548 31" fill="none" stroke="#34a853" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+
+      <text x="22" y="158" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">16 windowed JPEGs · ~140 image tokens each · 100% local</text>
+    </g>
+
+    <!-- ROW 3: synthesis output strip -->
+    <g transform="translate(32 540)">
+      <rect x="0" y="0" width="618" height="74" rx="14" fill="#ffffff" stroke="#d2e3fc"/>
+      <rect x="0" y="0" width="6" height="74" rx="3" fill="url(#accent)"/>
+      <text x="22" y="30" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">CALL 3 · TEXT-ONLY SYNTHESIS</text>
+      <text x="22" y="56" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600">Findings cite slice labels · clickable references · Evidence ZIP export</text>
+    </g>
   </g>
+
+  <!-- ============== BOTTOM ROW — TECH CHIPS ============== -->
+  <g transform="translate(86 760)">
+    <g filter="url(#softer)">
+      <rect x="0" y="0" width="360" height="76" rx="20" fill="#ffffff" stroke="#d2e3fc"/>
+      <rect x="0" y="0" width="10" height="76" rx="5" fill="#4285f4"/>
+      <text x="30" y="34" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">MODEL</text>
+      <text x="30" y="58" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">gemma-4-E2B-it-ONNX</text>
+    </g>
+
+    <g filter="url(#softer)" transform="translate(380 0)">
+      <rect x="0" y="0" width="260" height="76" rx="20" fill="#ffffff" stroke="#ceead6"/>
+      <rect x="0" y="0" width="10" height="76" rx="5" fill="#34a853"/>
+      <text x="30" y="34" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">RUNTIME</text>
+      <text x="30" y="58" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">WebGPU · q4f16</text>
+    </g>
+
+    <g filter="url(#softer)" transform="translate(660 0)">
+      <rect x="0" y="0" width="350" height="76" rx="20" fill="#ffffff" stroke="#fce8b2"/>
+      <rect x="0" y="0" width="10" height="76" rx="5" fill="#fbbc04"/>
+      <text x="30" y="34" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="2">OPTIONAL LOCAL</text>
+      <text x="30" y="58" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">MedGemma 4B · Ollama</text>
+    </g>
+  </g>
+
+  <!-- footer disclaimer + url -->
+  <text x="86" y="868" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="500">Educational and research use only · Not a medical device · rabimba.github.io/drmriai</text>
 </svg>

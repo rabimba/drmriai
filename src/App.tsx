@@ -1,4 +1,5 @@
-import { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
+import { Component, Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import type { StackViewport } from '@cornerstonejs/core';
 import type { LoadResult } from './viewer/DicomDropZone';
 import type { ActiveToolName, LayoutType, OrientationMarkerType } from './viewer/ViewportGrid';
@@ -272,6 +273,50 @@ function SuspenseFallback({
   className?: string;
 }) {
   return <div className={className}>{label}</div>;
+}
+
+interface LazyErrorBoundaryProps {
+  children: ReactNode;
+  label: string;
+  className?: string;
+}
+
+interface LazyErrorBoundaryState {
+  error: Error | null;
+}
+
+class LazyErrorBoundary extends Component<LazyErrorBoundaryProps, LazyErrorBoundaryState> {
+  state: LazyErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): LazyErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    logger.warn('[App] Failed to load lazy UI:', error, errorInfo);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+
+    return (
+      <div className={this.props.className ?? 'fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm'}>
+        <div className="max-w-sm rounded-xl border border-white/10 bg-neutral-900 px-5 py-4 text-sm text-white shadow-2xl">
+          <p className="font-medium">{this.props.label}</p>
+          <p className="mt-2 text-white/65">
+            The app could not load that panel. Restart the dev server if needed, then reload the page.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded-md bg-white/12 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/18"
+          >
+            Reload app
+          </button>
+        </div>
+      </div>
+    );
+  }
 }
 
 export default function App() {
@@ -933,14 +978,16 @@ export default function App() {
       </div>
 
       {settingsOpen && (
-        <Suspense fallback={null}>
-          <SettingsPanel
-            open={settingsOpen}
-            onClose={() => setSettingsOpen(false)}
-            config={providerConfig}
-            onConfigChange={handleConfigChange}
-          />
-        </Suspense>
+        <LazyErrorBoundary label="Settings failed to load">
+          <Suspense fallback={null}>
+            <SettingsPanel
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              config={providerConfig}
+              onConfigChange={handleConfigChange}
+            />
+          </Suspense>
+        </LazyErrorBoundary>
       )}
     </div>
   );

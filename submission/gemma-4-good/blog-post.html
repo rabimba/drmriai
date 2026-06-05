@@ -1,0 +1,426 @@
+<style>
+  /* A wrapper to apply our enhancements without affecting other posts */
+  .pro-post-wrapper {
+    line-height: 1.7;
+    font-size: 1.1rem;
+  }
+  .pro-post-wrapper h3 {
+    font-size: 1.8rem;
+    line-height: 1.3;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #eee;
+  }
+  .pro-post-wrapper h4 {
+    font-size: 1.4rem;
+    line-height: 1.4;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .pro-post-wrapper p {
+    margin-bottom: 1.25rem;
+  }
+  .pro-post-wrapper a {
+    color: #4a90e2;
+    text-decoration: none;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0% 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    transition: background-size 0.3s;
+  }
+  .pro-post-wrapper a:hover {
+    background-size: 100% 1px;
+  }
+  .pro-post-wrapper code {
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    padding: 0.2em 0.5em;
+    font-size: 0.9em;
+    border-radius: 4px;
+    font-family: "Courier New", Courier, monospace;
+  }
+  .pro-post-wrapper blockquote {
+    border-left: 4px solid #4a90e2;
+    margin: 2rem 0;
+    padding: 1rem 1.5rem;
+    background-color: #f9fafb;
+    font-size: 1.2rem;
+    font-style: italic;
+    color: #4a5568;
+  }
+  .pro-post-wrapper .styled-list {
+    list-style: none;
+    padding-left: 0;
+    counter-reset: custom-counter;
+    margin-top: 2rem;
+  }
+  .pro-post-wrapper .styled-list li {
+    counter-increment: custom-counter;
+    margin-bottom: 1.5rem;
+    position: relative;
+    padding-left: 3rem;
+  }
+  .pro-post-wrapper .styled-list li::before {
+    content: counter(custom-counter);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    line-height: 2rem;
+    text-align: center;
+    background-color: #4a90e2;
+    color: #ffffff;
+    border-radius: 50%;
+    font-weight: bold;
+  }
+  .pro-post-wrapper .image-caption {
+    text-align: center;
+    font-style: italic;
+    color: #6b7280;
+    margin-top: 0.5rem;
+    margin-bottom: 2.5rem;
+    font-size: 0.95rem;
+  }
+  .pro-post-wrapper img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 2.5rem auto 0.5rem auto;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+  }
+
+  /* ===== Additions for the Gemma 4 hackathon version ===== */
+
+  .pro-post-wrapper .hackathon-ribbon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #4285f4;
+    margin: 0 0 1.5rem 0;
+  }
+  .pro-post-wrapper .hackathon-ribbon::before {
+    content: "";
+    display: inline-block;
+    width: 56px;
+    height: 4px;
+    border-radius: 2px;
+    background-image: linear-gradient(90deg, #4285f4 0%, #4285f4 25%, #ea4335 25%, #ea4335 50%, #fbbc04 50%, #fbbc04 75%, #34a853 75%, #34a853 100%);
+  }
+
+  .pro-post-wrapper .stat-card {
+    margin: 2.5rem auto;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f4f8ff 100%);
+    border: 1px solid #d2e3fc;
+    border-left: 6px solid #4285f4;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .pro-post-wrapper .stat-card .stat-big {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: #202124;
+    line-height: 1;
+  }
+  .pro-post-wrapper .stat-card .stat-arrow {
+    color: #34a853;
+    font-size: 1.8rem;
+    font-weight: 900;
+  }
+  .pro-post-wrapper .stat-card .stat-big-green {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: #34a853;
+    line-height: 1;
+  }
+  .pro-post-wrapper .stat-card .stat-label {
+    font-size: 0.95rem;
+    color: #5f6368;
+    font-weight: 500;
+    flex-basis: 100%;
+  }
+
+  /* Responsive 16:9 YouTube embed */
+  .pro-post-wrapper .video-wrap {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    margin: 2.5rem 0 0.5rem 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+  }
+  .pro-post-wrapper .video-wrap iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  /* A small "watch the demo" callout box (text-only link, before the full embed) */
+  .pro-post-wrapper .watch-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: #e8f0fe;
+    border: 1px solid #aecbfa;
+    border-radius: 8px;
+    color: #1967d2;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin: 1rem 0 2rem 0;
+  }
+  .pro-post-wrapper .watch-cta a {
+    color: #1967d2;
+    font-weight: 700;
+  }
+
+  .pro-post-wrapper .disclaimer {
+    margin-top: 3rem;
+    padding: 1rem 1.25rem;
+    background: #fef7e0;
+    border: 1px solid #fbbc04;
+    border-radius: 8px;
+    color: #6b5b00;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .pro-post-wrapper .paths-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+  .pro-post-wrapper .paths-grid .path-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-top: 4px solid;
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .pro-post-wrapper .paths-grid .path-blue   { border-top-color: #4285f4; }
+  .pro-post-wrapper .paths-grid .path-yellow { border-top-color: #fbbc04; }
+  .pro-post-wrapper .paths-grid .path-green  { border-top-color: #34a853; }
+  .pro-post-wrapper .paths-grid .path-card h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #202124;
+  }
+  .pro-post-wrapper .paths-grid .path-card p {
+    margin: 0;
+    font-size: 0.92rem;
+    color: #3c4043;
+    line-height: 1.5;
+  }
+  .pro-post-wrapper .paths-grid .path-card code {
+    font-size: 0.8em;
+    background: #f3f4f6;
+    padding: 0.1em 0.4em;
+  }
+</style>
+
+<div class="pro-post-wrapper">
+
+  <div class="hackathon-ribbon">Gemma 4 Good Hackathon · Impact Track · Health &amp; Sciences</div>
+
+  <p>It started with two envelopes.</p>
+
+  <p>One contained a single sheet of paper, a radiologist's report for my partner. It was a wall of text that might as well have been written in another language. Words like <em>"parenchymal volume,"</em> <em>"hyperintensities,"</em> and <em>"susceptibility artifact"</em> stared back at us, creating more anxiety than they resolved.</p>
+
+  <p>The other was a flimsy paper sleeve containing a CD-ROM. This, we were told, held the actual images from her MRI scan. The ground truth. And we couldn't even look at it.</p>
+
+  <p>Our laptops, like most these days, don't have disc drives. For a moment, this crucial, deeply personal piece of her health information was a coaster. I felt that familiar, hot-wired frustration every engineer knows: the feeling of being locked out by a dumb problem. The powerlessness was infuriating.</p>
+
+  <p>So, I did what any slightly obsessive software engineer would do. I went on Amazon and, with a grim sense of purpose, ordered a $20 external DVD player. It felt like an analog solution to a digital problem, and it was the first step down a rabbit hole that would consume me for months.</p>
+
+  <div class="watch-cta">
+    ▶ Prefer to watch first? <a href="https://www.youtube.com/watch?v=sIceYp5vTQc" target="_blank">3-minute demo on YouTube</a>
+  </div>
+
+  <h4>The Firehose and the Flipbook</h4>
+
+  <p>When the drive arrived, I plugged it in and was greeted not by JPEGs, but by hundreds of <code>.dcm</code> files. I had just stumbled into the world of DICOM — the universal, arcane language of medical imaging.</p>
+
+  <p>After finding a free viewer, I finally saw the "scan." It wasn't one picture. It was a dataset. Over 500 individual slices. Flicking through them felt like watching a grainy, black-and-white flipbook of my partner's brain.</p>
+
+  <blockquote>This wasn't clarity. This was a data firehose. How could anyone possibly find a tiny anomaly in this sea of gray?</blockquote>
+
+  <p>I realized that a radiologist's superpower isn't just their ability to see. It's their ability to <strong>ignore</strong>. They use the clinical context to know <em>where</em> to look, <em>which</em> of the dozen-plus series to focus on, and <em>how</em> to tune their eyes. They aren't human search engines; they are detectives following leads.</p>
+
+  <p>And I thought, "That's it. That's what an AI needs to do. It needs to be a detective."</p>
+
+  <!--
+  ********************************************************************************************
+  *** IMAGE #1 — Cover image (1600×900) ***
+  RECOMMENDED PATH (Blogger Compose): in Compose view, place cursor here,
+  click "Insert image", upload cover-image.png from the submission folder.
+
+  ALTERNATE PATH (use a public URL): uncomment the <img> tag below and replace
+  the src with the public URL of the file (e.g. Blogger CDN, raw GitHub, etc.).
+  ********************************************************************************************
+  -->
+  <!--
+  <img src="REPLACE_WITH_PUBLIC_URL/cover-image.png"
+       alt="Dr.MRI.AI — evidence-first review with Gemma 4. Cover graphic showing the project name, hackathon tag, the 200+ to 16 evidence-selection result, and the Gemma 4 Browser pipeline.">
+  -->
+  <p class="image-caption">Dr.MRI.AI — the project that grew out of that hospital corridor.</p>
+
+  <h4>What I built</h4>
+
+  <p>Dr.MRI.AI is a privacy-first DICOM viewer that uses Gemma 4 to <strong>choose the evidence before reviewing it</strong>. You drag your folder onto the page, type a clinical question in plain English, and the model returns a structured plan — which series, which slice range, which window/level — <strong>before</strong> it ever looks at a pixel. The plan is shown to you. You can accept it, edit it, or reject it. Only then does the multimodal review run, on the focused subset.</p>
+
+  <div class="stat-card">
+    <span class="stat-big">200+</span>
+    <span class="stat-arrow">→</span>
+    <span class="stat-big-green">16</span>
+    <span class="stat-label">A representative knee MRI: 200+ slices reduced to 16 selected frames before Gemma 4 ever looks at a pixel. ~99% fewer image tokens, entirely on-device.</span>
+  </div>
+
+  <p>The final report cites slice labels you can click — <em>"a potential lesion is noted on (Slice 102)"</em> — and clicking jumps the viewer to that exact frame. You're not a passive recipient anymore. You're an active investigator.</p>
+
+  <h4>Watch it in action</h4>
+
+  <p>The clearest way to understand the workflow is to see it. The walkthrough below shows the drag-and-drop load, the prompt, the plan preview, the evidence review, and the final clickable report — about three minutes end-to-end.</p>
+
+  <div class="video-wrap">
+    <iframe src="https://www.youtube.com/embed/sIceYp5vTQc" title="Dr.MRI.AI — Evidence-First Medical Imaging with Gemma 4" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  </div>
+  <p class="image-caption">The 3-minute Dr.MRI.AI walkthrough. Direct link: <a href="https://www.youtube.com/watch?v=sIceYp5vTQc" target="_blank">youtube.com/watch?v=sIceYp5vTQc</a></p>
+
+  <h4>The Engineering Underneath the Hood</h4>
+
+  <p>For my fellow engineers and the terminally curious, this is where the fun begins. Here's how I translated that "detective" concept into code. The entire project is on my GitHub — <a href="https://github.com/rabimba/drmriai" target="_blank">github.com/rabimba/drmriai</a> — if you want to see the source.</p>
+
+  <p><strong>The Body: React, Vite, and a headless Cornerstone3D.</strong> The application's skeleton is a modern web stack — <strong>React</strong>, <strong>Vite</strong>, and <strong>Tailwind CSS</strong>. The "eyes" of the operation, the high-performance viewer, are powered by <strong>Cornerstone3D</strong>, the gold standard for web-based medical imaging. It uses WebGL for GPU-accelerated rendering that lets you scroll through hundreds of images without a stutter.</p>
+
+  <p><strong>The Nervous System: Taming the DICOM firehose.</strong> When you drag and drop a folder, a lot happens in a Web Worker so the UI never freezes:</p>
+
+  <ol class="styled-list">
+    <li><strong>Parsing.</strong> I use <code>dicom-parser</code> to rip through each file's header without touching the heavy pixel data. This is incredibly fast.</li>
+    <li><strong>Extraction.</strong> I pull out the clues for the AI detective — <code>SeriesInstanceUID</code>, <code>InstanceNumber</code>, <code>ConvolutionKernel</code>, and the <code>ImageOrientationPatient</code> direction cosines that tell me whether a series is axial, sagittal, or coronal. (Series Description is free text. Direction cosines are math, and math doesn't lie.)</li>
+    <li><strong>Organization.</strong> The code groups all slices by their shared series and sorts them by instance number. The result is a single, clean <code>StudyMetadata</code> object the model can actually reason about.</li>
+  </ol>
+
+  <!--
+  ********************************************************************************************
+  *** IMAGE #2 — Architecture diagram ***
+  Recommended file: asset-architecture.png (manual upload), or uncomment <img> below.
+  ********************************************************************************************
+  -->
+  <!--
+  <img src="REPLACE_WITH_PUBLIC_URL/asset-architecture.png"
+       alt="Dr.MRI.AI architecture diagram: three Gemma 4 calls — text-only metadata planner, multimodal batched reviewer, text-only synthesizer — sharing one cached model. The plan from call 1 is shown to the user before call 2 begins.">
+  -->
+  <p class="image-caption">Three Gemma 4 calls, one cached model. The plan from Call 1 is shown to the user before any image is sent to Call 2.</p>
+
+  <h4>The Brain: A Two-Call AI Architecture (Really, Three)</h4>
+
+  <p>This is the heart of the project. I split the AI task into a planner, a reviewer, and a synthesizer — all powered by the same Gemma 4 model.</p>
+
+  <!--
+  ********************************************************************************************
+  *** IMAGE #5 — The Brain (focused three-call diagram with SliceExporter detail) ***
+  Recommended file: asset-brain-architecture.png (manual upload), or uncomment <img> below.
+  ********************************************************************************************
+  -->
+  <!--
+  <img src="REPLACE_WITH_PUBLIC_URL/asset-brain-architecture.png"
+       alt="The Brain — Dr.MRI.AI's three Gemma 4 calls. Column 1: the Planner (text-only) takes StudyMetadata and returns a JSON SelectionPlan. Column 2: the Reviewer (multimodal) runs the SliceExporter pipeline (16-bit raw DICOM, windowed via canvas, exported as 8-bit JPEG) and reviews batches of selected slices. Column 3: the Synthesizer (text-only) merges batch notes into a grounded report whose findings must cite a slice label. A trust-contract band at the bottom marks the human-in-the-loop step where the user reviews the plan between Call 1 and Call 2.">
+  -->
+  <p class="image-caption">The Brain — three calls, one cached Gemma 4 model, with the SliceExporter pipeline that turns raw DICOM into model-ready JPEGs.</p>
+
+  <p><strong>Call 1 — The Planner (text-only).</strong> The mission is to create a plan of attack. I send the model a clinical summary built from <code>StudyMetadata</code> and instruct it to return a structured JSON <code>SelectionPlan</code>. No pixels, no waste. This is where a specialized model like <code>MedGemma</code> shines — fine-tuned on medical text, it understands the jargon natively and picks better series.</p>
+
+  <p><strong>Call 2 — The Reviewer (multimodal vision).</strong> My <code>SliceExporter</code> module now executes the plan. This is a delicate process: it fetches the raw 16-bit pixel data, uses an HTML5 Canvas to apply the correct window/level values (critical for visibility), and encodes a viewable 8-bit JPEG, perfectly prepared for the vision model. Gemma 4 then reviews those JPEGs in small batches with slice-position context.</p>
+
+  <p><strong>Call 3 — The Synthesizer (text-only).</strong> A final pass merges the batch notes into one cohesive report, with the explicit instruction that every finding must reference a slice label from the batch notes. No invention, no drift.</p>
+
+  <!--
+  ********************************************************************************************
+  *** IMAGE #3 — Before/After ***
+  Recommended file: asset-before-after.png
+  ********************************************************************************************
+  -->
+  <!--
+  <img src="REPLACE_WITH_PUBLIC_URL/asset-before-after.png"
+       alt="A before/after visual: the naive approach sends 200+ DICOM slices as a dim grey grid of thumbnails; the Dr.MRI.AI approach sends only 16 sharp blue-tinted slices selected by Gemma 4.">
+  -->
+  <p class="image-caption">The haystack on the left. The actual evidence on the right. ~99% fewer image tokens reach the model.</p>
+
+  <h4>The Pluggable Brain: One Interface, Three Ways to Run Gemma 4</h4>
+
+  <p>To avoid being locked into one AI provider, I used a classic software design pattern. I defined a simple <code>LLMService</code> interface — three methods, <code>getSelectionPlan</code>, <code>analyzeSlices</code>, <code>sendFollowUp</code> — and wrote three implementations against the same Gemma 4 family of models. Same JSON contract, same multimodal batch format, same Evidence ZIP export. Pick the deployment story that fits your constraints.</p>
+
+  <div class="paths-grid">
+    <div class="path-card path-blue">
+      <h5>1. Gemma 4 Browser (WebGPU)</h5>
+      <p><code>onnx-community/gemma-4-E2B-it-ONNX</code> via <strong>Transformers.js</strong> at <code>q4f16</code>. The whole pipeline runs in your browser tab on WebGPU. No server, no API key, no upload. This is the public demo path and what you see in the video.</p>
+    </div>
+    <div class="path-card path-yellow">
+      <h5>2. Ollama Local (MedGemma + Gemma 4)</h5>
+      <p>Planner: <code>alibayram/medgemma:4b</code>. Reviewer: <code>gemma4:latest</code>. MedGemma handles the medical-text planning step; multimodal Gemma 4 handles the vision review. Both local, on your machine, via Ollama.</p>
+    </div>
+    <div class="path-card path-green">
+      <h5>3. OpenAI-Compatible Endpoint</h5>
+      <p>Point Dr.MRI.AI at any <code>/v1</code> chat completions URL — Google's Gemini OpenAI-compat endpoint, a self-hosted Gemma 4 on vLLM/TGI, Together/Fireworks/Groq, or an internal hospital gateway. Bring your own key, entered at runtime.</p>
+    </div>
+  </div>
+
+  <p>That portability is the point. Medical imaging shouldn't be locked to one vendor's hosting story — some users need a fully local deployment, others need an enterprise gateway, and the public demo needs to work for a stranger on the internet with nothing but a browser.</p>
+
+  <h4>Why Gemma 4 Specifically</h4>
+
+  <p>Three properties of the Gemma 4 family made this architecture viable.</p>
+
+  <p><strong>It's small enough for the browser.</strong> Gemma 4 E2B at <code>q4f16</code> quantization fits in a single-digit-GB cache. The first load on a modest laptop takes a couple of minutes; after that it's cache-hot. This is the model size that makes "frontier intelligence at the edge" stop being a slogan.</p>
+
+  <p><strong>One model serves the planner, the reviewer, and the synthesizer.</strong> Gemma 4 is multimodal but also a strong text reasoner. I use the same cached weight file for all three calls — text JSON planning, multimodal review, text synthesis. No model swap, no second context window, no cross-model orchestration overhead.</p>
+
+  <p><strong>It's an open family with a medical vertical.</strong> Because Gemma is open, a self-hosted OpenAI-compatible deployment is reasonable, a fully local Ollama deployment is reasonable, and MedGemma already exists as a domain-tuned planner. Three reproducible deployment paths fall out of one open family.</p>
+
+  <!--
+  ********************************************************************************************
+  *** IMAGE #4 — Why Gemma 4 ***
+  Recommended file: asset-why-gemma.png
+  ********************************************************************************************
+  -->
+  <!--
+  <img src="REPLACE_WITH_PUBLIC_URL/asset-why-gemma.png"
+       alt="Why Gemma 4 — three cards showing: (1) small enough for the browser, gemma-4-E2B-it-ONNX at q4f16, under 2 minutes first load; (2) one model serves all three calls; (3) MedGemma domain-tuned vertical available via Ollama.">
+  -->
+  <p class="image-caption">The three Gemma 4 properties that made the architecture possible.</p>
+
+  <h4>The "Owner's Manual" I Wish We Had</h4>
+
+  <p>The result of this obsessive journey is the tool I was desperately searching for on that first day. A tool that respects the complexity of the data and the privacy of the user.</p>
+
+  <p>You can try it yourself at <a href="https://rabimba.github.io/drmriai/" target="_blank">rabimba.github.io/drmriai/</a>.</p>
+
+  <p>You drag your DICOM folder on, ask your question, and watch as the AI thinks, plans, and analyzes. Then, the report appears. And when it says "a potential lesion is noted on <strong>(Slice 102)</strong>," you click that blue link, and the main viewer instantly snaps to that exact slice. You're no longer a passive recipient of information. You're an active investigator.</p>
+
+  <blockquote>This project was born from frustration, but it was built with a sense of purpose. It's not about replacing doctors — it's about enabling patients to have more informed, confident conversations <em>with</em> their doctors.</blockquote>
+
+  <p>It's about turning that locked box of data into something you can finally see, question, and understand. It's the owner's manual we all deserve.</p>
+
+  <p><strong>Try it:</strong> <a href="https://rabimba.github.io/drmriai/" target="_blank">rabimba.github.io/drmriai/</a> &nbsp;·&nbsp; <strong>Source:</strong> <a href="https://github.com/rabimba/drmriai" target="_blank">github.com/rabimba/drmriai</a> &nbsp;·&nbsp; <strong>Video:</strong> <a href="https://www.youtube.com/watch?v=sIceYp5vTQc" target="_blank">3-min demo</a></p>
+
+  <div class="disclaimer">
+    <strong>Educational and research use only.</strong> Dr.MRI.AI is not a certified medical device and is not intended for clinical diagnosis or treatment decisions. Always consult a qualified physician for medical advice.
+  </div>
+
+</div>

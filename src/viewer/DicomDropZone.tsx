@@ -106,7 +106,8 @@ export default function DicomDropZone({ onFilesLoaded }: DicomDropZoneProps) {
   const [progress, setProgress] = useState({ loaded: 0, total: 0 });
   const [sampleProgress, setSampleProgress] = useState<SampleDataProgress | null>(null);
   const [sampleError, setSampleError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const filesInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = useCallback(
     async (files: File[]) => {
@@ -210,7 +211,26 @@ export default function DicomDropZone({ onFilesLoaded }: DicomDropZoneProps) {
       await processFiles(files);
 
       // Reset input so the same folder can be re-selected
-      if (inputRef.current) inputRef.current.value = '';
+      if (filesInputRef.current) filesInputRef.current.value = '';
+    },
+    [processFiles]
+  );
+
+  const handleFolderInputChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const fileList = e.target.files;
+      if (!fileList || fileList.length === 0) return;
+
+      setLoading(true);
+
+      const files: File[] = [];
+      for (let i = 0; i < fileList.length; i++) {
+        if (isDicomFile(fileList[i])) files.push(fileList[i]);
+      }
+      await processFiles(files);
+
+      // Reset input so the same folder can be re-selected
+      if (folderInputRef.current) folderInputRef.current.value = '';
     },
     [processFiles]
   );
@@ -281,23 +301,41 @@ export default function DicomDropZone({ onFilesLoaded }: DicomDropZoneProps) {
       <p className="text-neutral-300 text-lg">Drop a local DICOM study for Dr.MRI.AI</p>
       <p className="text-neutral-600 text-sm mt-1">Supports `.dcm` files and full DICOM directories</p>
       <input
-        ref={inputRef}
+        ref={folderInputRef}
         type="file"
         // @ts-expect-error webkitdirectory is a non-standard attribute
         webkitdirectory=""
         multiple
         hidden
+        onChange={handleFolderInputChange}
+      />
+      <input
+        ref={filesInputRef}
+        type="file"
+        multiple
+        hidden
         onChange={handleInputChange}
       />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={sampleBusy}
-        className="mt-3 flex items-center gap-2 px-4 py-2 rounded-md bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors text-sm disabled:opacity-50"
-      >
-        <FolderOpen className="w-4 h-4" />
-        Choose Study Folder
-      </button>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => folderInputRef.current?.click()}
+          disabled={sampleBusy}
+          className="flex items-center gap-2 px-4 py-2 rounded-md bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors text-sm disabled:opacity-50"
+        >
+          <FolderOpen className="w-4 h-4" />
+          Choose Study Folder
+        </button>
+        <button
+          type="button"
+          onClick={() => filesInputRef.current?.click()}
+          disabled={sampleBusy}
+          className="flex items-center gap-2 px-4 py-2 rounded-md bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors text-sm disabled:opacity-50"
+        >
+          <Upload className="w-4 h-4" />
+          Choose DICOM Files
+        </button>
+      </div>
 
       {/* Divider */}
       <div className="flex items-center gap-3 w-48 mt-4 mb-2">

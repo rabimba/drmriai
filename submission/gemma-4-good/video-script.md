@@ -1,92 +1,122 @@
-# Three-Minute Demo Video Plan
+# Three-Minute Demo Video — Final Script
 
-Target length: 2:35 to 2:50. Keep it under 3:00.
+**Target length:** 2:40 – 2:55. Hard ceiling 3:00.
+**Tone:** Calm, confident, personal. Not a sales pitch. You're showing a tool you'd actually use.
+**Branding:** Google/Gemma color accents only. Never imply official Google endorsement.
 
-## Recording Setup
+---
 
-- Use the public demo or local Vite app.
-- Use the bundled sample/de-identified knee MRI only. Do not show private patient data.
-- Use **Gemma 4 Browser** for the main reproducible demo.
-- Use the Google/Gemma-inspired cover image as the opening title card.
-- If you show Ollama, show it briefly as an advanced local option with `alibayram/medgemma:4b` for planning and `gemma4:latest` for vision.
-- Warm the Gemma 4 Browser model cache before recording if possible.
-- Keep browser zoom at 100 percent.
-- Hide bookmarks, notifications, API keys, and unrelated tabs.
+## Pre-Record Checklist (do all of these BEFORE you hit record)
 
-## Shot List And Narration
+1. Open the public demo at **https://rabimba.github.io/drmriai/** in an incognito Chrome window with WebGPU enabled.
+2. Open Settings → choose **Gemma 4 Browser**. Confirm:
+   - Model ID: `onnx-community/gemma-4-E2B-it-ONNX`
+   - dtype: `q4f16`
+   - Max images: 16, image-token budget: 140
+3. **Warm the cache** — load the bundled sample knee MRI, run one full pipeline so the model weights are cached. Then refresh.
+4. Hide bookmarks bar, notifications, system clock seconds. Close unrelated tabs.
+5. Set browser zoom to 100%.
+6. Pick the cleanest microphone you have. Record narration in a quiet room.
+7. If WebGPU is unavailable on the recording machine, fall back to the local Vite dev server with `npm run dev` — exact same UI.
 
-### 0:00-0:20 - Hook: The Real Problem
+---
 
-Visual: Google-color/Gemma-inspired title card, then quickly show a loaded MRI with many series/slices.
+## Shot-By-Shot Script
 
-Narration:
-> A medical study is not one picture. A knee MRI can contain hundreds of slices across many series. If we send all of that to an AI model, we make the answer slower, more expensive, and easier to ground in the wrong evidence. Dr.MRI.AI starts one step earlier: it asks Gemma to choose the evidence first.
+### 0:00 – 0:12 — Personal hook (cold open)
 
-### 0:20-0:40 - Impact And Privacy
+**Visual:** Hold the Gemma-color cover image on screen for 1 second. Cut to a wide shot of the loaded MRI with the series list visible — many series, hundreds of slices.
 
-Visual: Landing screen, local sample load, metadata/series panel.
+**Narration:**
+> A few months ago I sat with my partner in a hospital and scrolled through an MRI with two hundred slices. The radiologist had circled three. Three slices out of two hundred were the answer. The rest was context.
 
-Narration:
-> This matters in classrooms, rural sites, and privacy-sensitive review workflows. The DICOM files are loaded locally in the browser. The goal is not clinical diagnosis. The goal is transparent educational review where every finding can be traced back to a slice.
+### 0:12 – 0:25 — The real problem
 
-### 0:40-1:00 - Model Story
+**Visual:** Cut to the series-browser panel. Slowly scroll the slice slider — let the viewer *see* there are hundreds of frames.
 
-Visual: Open Settings. Show **Gemma 4 Browser**, WebGPU available, model ID. Optional quick cut to Ollama settings with MedGemma/Gemma 4.
+**Narration:**
+> Every multimodal medical AI demo does the same thing — it sends the entire haystack to the model. That wastes context, hurts grounding, and makes the answer hard to audit. Dr.MRI.AI starts one step earlier. It asks Gemma 4 to choose the evidence first.
 
-Narration:
-> This is built around the Gemma ecosystem. The public demo uses Gemma 4 E2B instruction-tuned ONNX directly in the browser with Transformers.js and WebGPU. For a local advanced workflow, Dr.MRI.AI can use MedGemma through Ollama for medical text planning, then Gemma 4 for vision review.
+### 0:25 – 0:42 — Privacy + Gemma 4 setup
 
-### 1:00-1:25 - Smart Slice Planning
+**Visual:** Open Settings panel. Hover over the **Gemma 4 Browser** option. Show the model ID, dtype, and WebGPU indicator.
 
-Visual: Ask: `Evaluate ACL and menisci on this knee MRI.`
+**Narration:**
+> The whole pipeline runs in your browser. No upload, no server, no API key. The model is Gemma 4 E2B instruction-tuned, in ONNX, running on WebGPU through Transformers.js. The DICOM files never leave your laptop.
 
-Narration:
-> The first model call is text-only. It reads DICOM metadata: series descriptions, orientation, slice counts, MRI weighting, and current viewport context. It returns structured JSON: the series to review, the slice range, the sampling strategy, and windowing.
+### 0:42 – 1:02 — Ask the question
 
-### 1:25-1:50 - Human Confirmation
+**Visual:** Close Settings. Hit Cmd-K. Type slowly: `Evaluate ACL and menisci on this knee MRI.` Hit enter.
 
-Visual: Plan preview card. Show selected series, slice counts, coverage mode, and Accept.
+**Narration:**
+> One sentence. That's the entire input. Gemma 4's first job is text-only: it reads the DICOM metadata — series descriptions, MRI weighting, slice orientation, current viewport — and decides which series and which slice range are actually relevant.
 
-Narration:
-> The plan appears before image analysis. That is the key trust feature. The user can inspect what the model selected, adjust it, and only then send the evidence forward.
+### 1:02 – 1:25 — The plan (the trust beat)
 
-### 1:50-2:20 - Multimodal Evidence Review
+**Visual:** Plan preview card appears. Highlight: target series, slice range, sampling strategy, window/level. Let it sit on screen for 3 full seconds.
 
-Visual: Pipeline steps: selecting slices, exporting JPEGs, analyzing batches. Speed up waiting.
+**Narration:**
+> This is the trust moment. Before any image is reviewed, the plan is shown back to me. Series eight, sagittal proton-density fat-saturated, slices thirteen to twenty-seven, uniform sampling, windowing applied. I can accept it, edit it, or reject it. *Then* the model looks at images.
 
-Narration:
-> Dr.MRI.AI renders only the selected DICOM slices, applies the planned windowing, resizes the evidence, and sends it to Gemma 4 in small multimodal batches. The final synthesis is instructed to cite only findings supported by those batch notes.
+### 1:25 – 1:55 — Evidence review
 
-### 2:20-2:45 - Grounded Output
+**Visual:** Click Accept. Pipeline view shows: selecting slices → exporting JPEGs → analyzing batch 1 → batch 2 → synthesizing. Speed up the wait portion with a 2× cut.
 
-Visual: Final report, clickable slice reference, viewer jump, evidence ZIP export.
+**Narration:**
+> Cornerstone3D renders only the selected slices, applies the windowing, and exports them as compact JPEGs. Gemma 4 reviews them in batches of four. A final text-only synthesis pass merges the batch notes into a grounded report. We went from two hundred slices to sixteen. Same model, three calls, one cached weight file.
 
-Narration:
-> The output is not just text. Slice references jump back into the viewer, and the evidence ZIP exports the report, JSON manifest, and exact JPEG slices reviewed. AI does not replace a radiologist here; it makes evidence selection inspectable and local.
+### 1:55 – 2:20 — Grounded output
 
-### 2:45-2:55 - Close
+**Visual:** Final report appears in the chat sidebar. Click a slice reference — the viewer jumps to that slice. Click another. Then click "Export Evidence ZIP" — show the file appearing in the downloads folder.
 
-Visual: Live demo URL and GitHub URL.
+**Narration:**
+> Findings cite slice labels. Each citation is clickable — the viewer jumps to the exact image the model saw. Everything reviewed is exportable as a ZIP: the report, a JSON manifest, and the exact JPEGs the model received. The workflow is auditable end to end.
 
-Narration:
-> Dr.MRI.AI is open source, runs as a static web app, and shows how Gemma 4 can bring useful multimodal reasoning closer to sensitive data.
+### 2:20 – 2:40 — The MedGemma option
 
-## Fallback If Gemma Browser Loading Is Slow
+**Visual:** Reopen Settings. Switch to Ollama. Show `alibayram/medgemma:4b` for text and `gemma4:latest` for vision. Close it.
 
-- Preload the model before recording and start the capture after the model is cached.
-- If model loading still takes too long, record the progress UI for 3 seconds, then cut to the completed plan/report.
-- Narrate honestly: "The first run downloads the model into browser cache; subsequent runs reuse it."
+**Narration:**
+> For users on hardened workstations, the same interface accepts a stronger medical split: MedGemma for the text planner, Gemma 4 for vision review, both local through Ollama. One architecture, two paths — judge-reproducible in the browser, clinician-friendly on the desktop.
 
-## Captures To Keep
+### 2:40 – 2:55 — Close
 
-- Google/Gemma-inspired title card.
-- Landing screen.
-- Settings panel with Gemma 4 Browser visible.
-- Optional 3-second Ollama settings shot showing MedGemma 4B planner and Gemma 4 vision.
-- Metadata/series panel.
-- Clinical prompt typed into the AI workspace.
-- Plan preview before accepting.
-- Pipeline progress.
-- Final report with slice references.
-- Click a slice reference.
-- Evidence ZIP export.
+**Visual:** Title card again. URL on screen: `rabimba.github.io/drmriai`. Educational-use-only disclaimer in the corner.
+
+**Narration:**
+> Dr.MRI.AI is open source. It runs as a static web app. It's not a medical device — it's a research tool that shows what becomes possible when Gemma 4 is small enough to live next to sensitive data instead of in someone else's cloud.
+
+---
+
+## Fallback Plans
+
+- **Gemma model load is slow on first record.** Pre-warm the cache. If load still takes >15 s, record 3 s of the progress UI, then jump-cut to the completed plan. Narrate: *"On first run the model downloads into browser cache; subsequent runs are instant."*
+- **WebGPU unavailable.** Switch the recording to a different machine, or fall back to local Vite + Ollama with `gemma4:latest`. The narration only needs the words "Gemma 4" to remain accurate.
+- **You're over 3:00.** Cut the 0:00–0:12 cold open down to 8 seconds. Cut the MedGemma section to 12 seconds. Don't cut the trust beat (1:02–1:25) — that's the differentiator.
+
+---
+
+## B-Roll / Shots To Capture (record extras even if you don't use all)
+
+1. Gemma-color title card (cover image, 1080p).
+2. Empty viewer with drag-and-drop hint.
+3. Bundled sample MRI loading + progress bar.
+4. Series browser with multiple series visible.
+5. Settings panel — Gemma 4 Browser highlighted.
+6. Cmd-K spotlight prompt with the clinical question.
+7. Plan preview card — full screen.
+8. Pipeline view mid-run (batch progress).
+9. Report with at least three clickable slice references.
+10. A click that jumps the viewer to a referenced slice.
+11. Evidence ZIP download appearing in Finder/Explorer.
+12. Quick Ollama settings shot with MedGemma + Gemma 4.
+13. Closing title card with URL + disclaimer.
+
+## YouTube Upload Settings
+
+- Title: `Dr.MRI.AI — Evidence-First Medical Imaging with Gemma 4 (Gemma 4 Good Hackathon)`
+- Visibility: **Public** (judges must view without login).
+- Description: paste the suggested copy from `project-links.md`.
+- Tags: gemma, gemma-4, dicom, medical-ai, webgpu, transformers-js, ollama, medgemma, kaggle, hackathon.
+- Thumbnail: use the cover image (or a clean screenshot of the plan preview).
+- After upload, paste the YouTube URL into `project-links.md` and the Kaggle Writeup attachments.

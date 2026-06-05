@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="t d">
+  <title id="t">Why Gemma 4 — three properties that made this product possible</title>
+  <desc id="d">Three Gemma 4 properties that enabled Dr.MRI.AI: small enough for the browser, single model for planner and reviewer, and a domain-tuned MedGemma vertical.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f3f7ff"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4285f4"/>
+      <stop offset="0.34" stop-color="#ea4335"/>
+      <stop offset="0.66" stop-color="#fbbc04"/>
+      <stop offset="1" stop-color="#34a853"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#174ea6" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+
+  <!-- header -->
+  <g transform="translate(80 80)">
+    <g transform="translate(0 -42)">
+      <rect width="64" height="6" rx="3" fill="#4285f4"/>
+      <rect x="76" width="64" height="6" rx="3" fill="#ea4335"/>
+      <rect x="152" width="64" height="6" rx="3" fill="#fbbc04"/>
+      <rect x="228" width="64" height="6" rx="3" fill="#34a853"/>
+    </g>
+    <text x="0" y="0" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800" letter-spacing="3">WHY GEMMA 4</text>
+    <text x="0" y="62" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="900">Three properties that made Dr.MRI.AI possible.</text>
+    <rect x="0" y="90" width="340" height="4" rx="2" fill="url(#accent)"/>
+  </g>
+
+  <!-- card 1 -->
+  <g transform="translate(80 260)" filter="url(#soft)">
+    <rect width="460" height="500" rx="22" fill="url(#panel)" stroke="#d2e3fc"/>
+    <rect width="460" height="100" rx="22" fill="#e8f0fe"/>
+    <rect y="78" width="460" height="22" fill="#e8f0fe"/>
+    <circle cx="56" cy="50" r="22" fill="#4285f4"/>
+    <text x="56" y="58" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" text-anchor="middle">1</text>
+    <text x="100" y="58" fill="#1967d2" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Small enough for the browser</text>
+
+    <text x="36" y="148" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">gemma-4-E2B-it-ONNX</text>
+    <text x="36" y="178" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="16">q4f16 quantization · single-digit-GB cache</text>
+
+    <line x1="36" y1="208" x2="424" y2="208" stroke="#e8eaed"/>
+
+    <text x="36" y="244" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="2">MEASURED</text>
+    <text x="36" y="274" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="16">First-load + warm-up</text>
+    <text x="424" y="274" fill="#4285f4" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="900" text-anchor="end">&lt; 2 min</text>
+    <text x="36" y="304" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">on a 2023 Chromebook with WebGPU</text>
+
+    <text x="36" y="344" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="16">Subsequent runs</text>
+    <text x="424" y="344" fill="#34a853" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="900" text-anchor="end">cache-hot</text>
+    <text x="36" y="374" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="13">no re-download</text>
+
+    <line x1="36" y1="404" x2="424" y2="404" stroke="#e8eaed"/>
+    <text x="36" y="438" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="15" font-style="italic">"Frontier intelligence at the edge"</text>
+    <text x="36" y="462" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="15" font-style="italic">stops being a slogan.</text>
+  </g>
+
+  <!-- card 2 -->
+  <g transform="translate(570 260)" filter="url(#soft)">
+    <rect width="460" height="500" rx="22" fill="url(#panel)" stroke="#fce8b2"/>
+    <rect width="460" height="100" rx="22" fill="#fef7e0"/>
+    <rect y="78" width="460" height="22" fill="#fef7e0"/>
+    <circle cx="56" cy="50" r="22" fill="#fbbc04"/>
+    <text x="56" y="58" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" text-anchor="middle">2</text>
+    <text x="100" y="58" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">One model serves both calls</text>
+
+    <text x="36" y="148" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">Multimodal + strong text reasoner</text>
+    <text x="36" y="178" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="16">No model swap. No second context.</text>
+
+    <line x1="36" y1="208" x2="424" y2="208" stroke="#e8eaed"/>
+
+    <g transform="translate(36 232)">
+      <rect width="180" height="44" rx="10" fill="#e8f0fe"/>
+      <text x="12" y="29" fill="#1967d2" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">CALL 1 · JSON plan</text>
+    </g>
+    <g transform="translate(36 286)">
+      <rect width="180" height="44" rx="10" fill="#fef7e0"/>
+      <text x="12" y="29" fill="#a56300" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">CALL 2 · vision review</text>
+    </g>
+    <g transform="translate(36 340)">
+      <rect width="180" height="44" rx="10" fill="#e6f4ea"/>
+      <text x="12" y="29" fill="#188038" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">CALL 3 · synthesis</text>
+    </g>
+
+    <g transform="translate(232 232)">
+      <rect width="192" height="152" rx="14" fill="#fff" stroke="#fce8b2"/>
+      <text x="16" y="32" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">ONE WEIGHT FILE</text>
+      <circle cx="96" cy="84" r="34" fill="none" stroke="url(#accent)" stroke-width="7"/>
+      <text x="96" y="92" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" text-anchor="middle">G4</text>
+      <text x="16" y="132" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="11">cached once · reused 3×</text>
+    </g>
+
+    <line x1="36" y1="404" x2="424" y2="404" stroke="#e8eaed"/>
+    <text x="36" y="438" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="15" font-style="italic">Same model, three jobs.</text>
+    <text x="36" y="462" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="15" font-style="italic">No bloated multi-model orchestration.</text>
+  </g>
+
+  <!-- card 3 -->
+  <g transform="translate(1060 260)" filter="url(#soft)">
+    <rect width="460" height="500" rx="22" fill="url(#panel)" stroke="#ceead6"/>
+    <rect width="460" height="100" rx="22" fill="#e6f4ea"/>
+    <rect y="78" width="460" height="22" fill="#e6f4ea"/>
+    <circle cx="56" cy="50" r="22" fill="#34a853"/>
+    <text x="56" y="58" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" text-anchor="middle">3</text>
+    <text x="100" y="58" fill="#188038" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Domain-tuned vertical exists</text>
+
+    <text x="36" y="148" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">MedGemma + Gemma 4 (Ollama)</text>
+    <text x="36" y="178" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="16">Same provider interface. Zero code change.</text>
+
+    <line x1="36" y1="208" x2="424" y2="208" stroke="#e8eaed"/>
+
+    <text x="36" y="244" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="2">SPLIT WORKFLOW</text>
+
+    <g transform="translate(36 264)">
+      <rect width="388" height="56" rx="12" fill="#fff" stroke="#fce8b2"/>
+      <rect width="6" height="56" rx="3" fill="#fbbc04"/>
+      <text x="22" y="24" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">PLANNER · MEDICAL TEXT</text>
+      <text x="22" y="46" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800">alibayram/medgemma:4b</text>
+    </g>
+    <g transform="translate(36 332)">
+      <rect width="388" height="56" rx="12" fill="#fff" stroke="#d2e3fc"/>
+      <rect width="6" height="56" rx="3" fill="#4285f4"/>
+      <text x="22" y="24" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">REVIEWER · VISION</text>
+      <text x="22" y="46" fill="#202124" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800">gemma4:latest</text>
+    </g>
+
+    <line x1="36" y1="404" x2="424" y2="404" stroke="#e8eaed"/>
+    <text x="36" y="438" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="15" font-style="italic">One architecture, two reproducible paths:</text>
+    <text x="36" y="462" fill="#3c4043" font-family="Inter, Arial, sans-serif" font-size="15" font-style="italic">judge-friendly browser, clinician-friendly local.</text>
+  </g>
+
+  <text x="80" y="868" fill="#5f6368" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="500">Educational and research use only · Not a medical device · Gemma 4 Good Hackathon</text>
+</svg>
