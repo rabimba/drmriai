@@ -25,7 +25,7 @@ const workflow = [
 
 export default function LandingScreen({ children }: LandingScreenProps) {
   return (
-    <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_24%),radial-gradient(circle_at_80%_12%,_rgba(45,212,191,0.12),_transparent_22%),linear-gradient(180deg,_#060816_0%,_#080b14_42%,_#05060b_100%)] px-6 py-10 text-white md:px-8">
+    <div className="min-h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_24%),radial-gradient(circle_at_80%_12%,_rgba(45,212,191,0.12),_transparent_22%),linear-gradient(180deg,_#060816_0%,_#080b14_42%,_#05060b_100%)] px-6 py-10 text-white md:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-7xl gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)]">
         <section className="flex min-h-[32rem] flex-col justify-between rounded-[36px] border border-white/10 bg-[linear-gradient(135deg,rgba(14,18,32,0.92),rgba(8,12,20,0.78)_48%,rgba(11,25,26,0.88)_100%)] p-7 shadow-[0_35px_120px_rgba(0,0,0,0.45)] md:p-10">
           <div>

@@ -1,6 +1,7 @@
 import { Component, Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import type { StackViewport } from '@cornerstonejs/core';
+import { Maximize2 } from 'lucide-react';
 import type { LoadResult } from './viewer/DicomDropZone';
 import type { ActiveToolName, LayoutType, OrientationMarkerType } from './viewer/ViewportGrid';
 import LoadingOverlay from './viewer/LoadingOverlay';
@@ -451,9 +452,38 @@ export default function App() {
           if (attempts++ < 5) setTimeout(() => void applyPlan(), 200);
           return;
         }
-        const viewport = engine.getViewport('CT_STACK') as StackViewport | undefined;
+        const { windowCenter, windowWidth } = currentPlan;
+        const voiRange = { lower: windowCenter - windowWidth / 2, upper: windowCenter + windowWidth / 2 };
+
+        // Resolve whichever primary viewport exists for the current layout
+        // (1x1 stack, 1x1 reconstructed volume, MPR triplet, or grid slot 0)
+        const stackCandidates = ['CT_STACK', 'CT_SINGLE_VOL', 'VP_GRID_0'];
+        let viewport = null as StackViewport | null;
+        for (const id of stackCandidates) {
+          const vp = engine.getViewport(id) as StackViewport | undefined;
+          if (vp && typeof vp.getImageIds === 'function' && vp.getImageIds().length > 0) {
+            viewport = vp;
+            break;
+          }
+        }
+
+        // MPR layout: apply VOI to the volume viewports (no stack scrolling there)
         if (!viewport) {
-          if (attempts++ < 5) setTimeout(() => void applyPlan(), 200);
+          const mprIds = ['CT_AXIAL', 'CT_SAGITTAL', 'CT_CORONAL'];
+          const mprViewports = mprIds
+            .map((id) => engine.getViewport(id))
+            .filter((vp): vp is NonNullable<typeof vp> => Boolean(vp));
+          if (mprViewports.length === 0) {
+            // Viewport not ready yet — retry
+            if (attempts++ < 5) setTimeout(() => void applyPlan(), 200);
+            return;
+          }
+          for (const vp of mprViewports) {
+            try {
+              (vp as StackViewport).setProperties?.({ voiRange });
+              vp.render();
+            } catch { /* viewport may not support VOI updates yet */ }
+          }
           return;
         }
 
@@ -463,15 +493,14 @@ export default function App() {
           return;
         }
 
-        const { windowCenter, windowWidth } = currentPlan;
-        viewport.setProperties({ voiRange: { lower: windowCenter - windowWidth / 2, upper: windowCenter + windowWidth / 2 } });
+        viewport.setProperties({ voiRange });
 
         if (targetSeries) {
           const [rangeStart, rangeEnd] = currentPlan.sliceRange;
           const midInstance = Math.round((rangeStart + rangeEnd) / 2);
           // Find the slice closest to midInstance in the target series
           const sliceIdx = targetSeries.slices.findIndex((s) => s.instanceNumber >= midInstance);
-          if (sliceIdx >= 0 && sliceIdx < viewportIds.length) {
+          if (sliceIdx >= 0 && sliceIdx < viewportIds.length && typeof viewport.setImageIdIndex === 'function') {
             viewport.setImageIdIndex(sliceIdx);
           }
         }
@@ -692,9 +721,12 @@ export default function App() {
         );
         if (currentSeries && sliceIndex >= 0 && sliceIndex < currentSeries.slices.length) {
           const slice = currentSeries.slices[sliceIndex];
+          // Position along the axis that varies for this plane (sagittal→x, coronal→y, axial→z)
+          const axisIdx = currentSeries.anatomicalPlane === 'sagittal' ? 0
+            : currentSeries.anatomicalPlane === 'coronal' ? 1 : 2;
           viewportContext = {
             currentInstanceNumber: slice.instanceNumber,
-            currentZPosition: slice.imagePositionPatient[2],
+            currentZPosition: slice.imagePositionPatient[axisIdx],
             seriesNumber: String(currentSeries.seriesNumber),
             totalSlicesInSeries: currentSeries.slices.length,
           };
@@ -909,6 +941,17 @@ export default function App() {
                 <div className="pointer-events-none absolute right-5 top-5 z-10 hidden rounded-full border border-white/10 bg-black/35 px-3 py-1 text-[11px] text-white/70 backdrop-blur-md md:block">
                   {studyMetadata?.studyDescription || 'Study loaded'}
                 </div>
+                {showChat && (
+                  <button
+                    type="button"
+                    onClick={() => setShowChat(false)}
+                    className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/55 px-3 py-2 text-[11px] font-medium text-white/80 backdrop-blur-md transition-colors hover:bg-black/75 hover:text-white lg:hidden"
+                    title="Expand viewer (reopen the AI panel from the toolbar)"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    Expand viewer
+                  </button>
+                )}
                 <div className="absolute inset-0">
                   <Suspense fallback={<SuspenseFallback label="Loading viewport..." className="flex h-full items-center justify-center text-sm text-white/60" />}>
                     <ViewportGrid

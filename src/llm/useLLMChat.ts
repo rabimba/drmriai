@@ -186,6 +186,10 @@ function getProviderExportMaxLongEdge(providerConfig: ProviderConfig): number | 
   return undefined;
 }
 
+function finiteNumber(value: number | undefined, fallback: number): number {
+  return Number.isFinite(value) ? Number(value) : fallback;
+}
+
 /**
  * Fix a single SeriesSelection against its series metadata.
  */
@@ -194,7 +198,11 @@ function fixSelection(sel: SeriesSelection, metadata: StudyMetadata, maxBudget: 
   if (!series) return sel;
 
   const [minInst, maxInst] = series.instanceNumberRange;
-  let [start, end] = sel.sliceRange;
+  if (!Number.isFinite(sel.sliceRange?.[0]) || !Number.isFinite(sel.sliceRange?.[1])) {
+    logger.warn(`[PlanFix] "${sel.seriesNumber}" non-finite sliceRange [${sel.sliceRange}] → full series range [${minInst},${maxInst}]`);
+  }
+  let start = finiteNumber(sel.sliceRange?.[0], minInst);
+  let end = finiteNumber(sel.sliceRange?.[1], maxInst);
 
   if (start > end) [start, end] = [end, start];
   start = Math.max(minInst, start);
@@ -226,7 +234,10 @@ function fixSelection(sel: SeriesSelection, metadata: StudyMetadata, maxBudget: 
     logger.warn(`[PlanFix] "${sel.seriesNumber}" clamped: [${sel.sliceRange}] → [${start},${end}]`);
   }
 
-  return { ...sel, sliceRange: [start, end], samplingStrategy, samplingParam };
+  const windowCenter = finiteNumber(sel.windowCenter, series.windowCenter ?? 40);
+  const windowWidth = Math.max(1, finiteNumber(sel.windowWidth, series.windowWidth ?? 400));
+
+  return { ...sel, sliceRange: [start, end], samplingStrategy, samplingParam, windowCenter, windowWidth };
 }
 
 /**
@@ -316,10 +327,6 @@ function fixSelectionPlan(plan: SelectionPlan, metadata: StudyMetadata, maxTotal
   };
 }
 
-function finiteNumber(value: number | undefined, fallback: number): number {
-  return Number.isFinite(value) ? Number(value) : fallback;
-}
-
 function countSelectionAgainstMetadata(metadata: StudyMetadata, selection: SeriesSelection): number {
   const series = getSeriesForSelection(metadata, selection);
   if (!series) return estimateSelectionCount(selection);
@@ -402,8 +409,9 @@ function expandPlanForAnalysisDepth(
 
     const [minInst, maxInst] = series.instanceNumberRange;
     const available = series.slices.length;
+    const cap = Number.isFinite(policy.maxImages) ? policy.maxImages : available;
     const budget = policy.providerDepth === 'full'
-      ? available
+      ? Math.min(available, cap)
       : Math.max(1, allocation.get(selection.seriesNumber) ?? Math.min(available, policy.maxImages));
     const useAll = budget >= available;
 
@@ -665,13 +673,14 @@ export function useLLMChat(
         });
         if (abortRef.current) { logger.groupEnd(); return; }
 
+        const imageIdByInstance = new Map(selectedSlices.map((s) => [s.instanceNumber, s.imageId]));
         for (const e of exported) {
           const globalIdx = allBlobs.length + 1;
           allBlobs.push(e.blob);
           allMappings.push({
             imageIndex: globalIdx,
             instanceNumber: e.instanceNumber,
-            imageId: selectedSlices.find((s) => s.instanceNumber === e.instanceNumber)?.imageId ?? '',
+            imageId: imageIdByInstance.get(e.instanceNumber) ?? '',
             zPosition: e.zPosition,
             label: `${seriesDesc} — Slice ${e.instanceNumber}/${totalSlicesInSeries} (${axisLetter}=${e.zPosition.toFixed(0)}mm)`,
             seriesNumber: sel.seriesNumber,
@@ -844,7 +853,16 @@ export function useLLMChat(
       const service = createLLMService(providerConfig);
       setStatus('following-up');
 
-      const response = await service.sendFollowUp(updatedMessages, metadata);
+      // Bound context growth: keep the first exchange (original analysis) + the last 10 messages
+      const MAX_FOLLOWUP_HISTORY = 12;
+      let historyForService = updatedMessages;
+      if (updatedMessages.length > MAX_FOLLOWUP_HISTORY) {
+        const firstExchange = updatedMessages.slice(0, 2);
+        const recent = updatedMessages.slice(-(MAX_FOLLOWUP_HISTORY - 2));
+        historyForService = [...firstExchange, ...recent];
+      }
+
+      const response = await service.sendFollowUp(historyForService, metadata);
 
       const assistantMsg: ChatMessage = {
         id: makeId(),

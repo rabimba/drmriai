@@ -4,6 +4,9 @@ import { DEFAULT_GEMMA_TRANSFORMERS_MAX_IMAGES } from './gemmaTransformersConfig
 
 export const DEFAULT_ANALYSIS_DEPTH: AnalysisDepth = 'standard';
 
+/** Full-depth cap for hosted (paid) providers — bounds cost, memory, and request count. Ollama stays unbounded (local). */
+export const HOSTED_FULL_DEPTH_MAX_IMAGES = 120;
+
 export interface AnalysisDepthPolicy {
   depth: AnalysisDepth;
   providerDepth: AnalysisDepth;
@@ -68,9 +71,12 @@ export function getAnalysisDepthPolicy(
     depth: requestedDepth,
     providerDepth: requestedDepth,
     standardBudget: 60,
-    maxImages: full ? Number.POSITIVE_INFINITY : requestedDepth === 'fast' ? 20 : 60,
+    maxImages: full ? HOSTED_FULL_DEPTH_MAX_IMAGES : requestedDepth === 'fast' ? 20 : 60,
     batchSize: 24,
     fullEnabled: true,
+    warning: full
+      ? `Full coverage on hosted providers is capped at ${HOSTED_FULL_DEPTH_MAX_IMAGES} images to bound cost and runtime.`
+      : undefined,
   };
 }
 

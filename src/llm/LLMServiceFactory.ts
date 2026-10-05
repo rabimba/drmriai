@@ -44,11 +44,12 @@ function extractJson(text: string): string {
 async function blobToBase64(blob: Blob): Promise<string> {
   const buffer = await blob.arrayBuffer();
   const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const CHUNK = 0x8000; // 32KB chunks avoid call-stack/iteration overhead on large images
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK)));
   }
-  return btoa(binary);
+  return btoa(parts.join(''));
 }
 
 function parseSamplingStrategy(value: unknown): SeriesSelection['samplingStrategy'] {
@@ -95,7 +96,7 @@ function parseSelectionPlan(raw: string): SelectionPlan {
     throw new Error(
       'The LLM did not return valid JSON. This can happen with smaller models. ' +
       'The raw response was logged to the browser console under [Dr.MRI.AI]. ' +
-      'Try a more specific clinical prompt (e.g., "Evaluate for lung nodules") or switch to Gemini 2.5 Flash.',
+      'Try a more specific clinical prompt (e.g., "Evaluate for lung nodules") or switch providers in Settings.',
     );
   }
 
@@ -289,6 +290,25 @@ function buildFallbackSelectionPlan(
   ].join(' ');
 
   return populateLegacyFields(selections, reasoning, totalImages);
+}
+
+/** Shared Call-1 parse helper: falls back to the metadata heuristic plan when the LLM returns invalid JSON. */
+function parseSelectionPlanWithFallback(
+  raw: string,
+  providerLabel: string,
+  metadata: StudyMetadata,
+  clinicalHint: string,
+  maxImages: number,
+): SelectionPlan {
+  try {
+    return parseSelectionPlan(raw);
+  } catch (error) {
+    debugLog('warn', providerLabel, 'Selection plan was not valid JSON; using metadata fallback plan.', {
+      error: error instanceof Error ? error.message : String(error),
+      rawPreview: raw.slice(0, 4000),
+    });
+    return buildFallbackSelectionPlan(metadata, clinicalHint, maxImages);
+  }
 }
 
 function extractChatCompletionText(data: { choices?: Array<{ message?: { content?: unknown } }> }): string {
@@ -613,7 +633,7 @@ class GeminiService implements LLMService {
       temperature: 0,
       maxTokens: 1024,
     });
-    return parseSelectionPlan(response);
+    return parseSelectionPlanWithFallback(response, 'Gemini', metadata, clinicalHint, 20);
   }
 
   async analyzeSlices(
@@ -647,7 +667,7 @@ class GeminiService implements LLMService {
         { role: 'user', content },
       ],
       temperature: 0,
-      maxTokens: 4096,
+      maxTokens: 8192,
     });
   }
 
@@ -707,7 +727,7 @@ class GeminiService implements LLMService {
         },
       ],
       temperature: 0,
-      maxTokens: 4096,
+      maxTokens: 8192,
     });
   }
 
@@ -732,19 +752,28 @@ class GeminiService implements LLMService {
     temperature: number;
     maxTokens: number;
   }): Promise<string> {
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: params.maxTokens,
-        temperature: params.temperature,
-        messages: params.messages,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          max_tokens: params.maxTokens,
+          temperature: params.temperature,
+          messages: params.messages,
+        }),
+        signal: AbortSignal.timeout(300_000),
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'TimeoutError') {
+        throw new Error(`Gemini request timed out (5min). Model: ${this.model}. Try fewer slices or standard analysis depth.`);
+      }
+      throw err;
+    }
 
     if (!res.ok) {
       const body = await res.text();
@@ -795,7 +824,7 @@ class OpenAiCompatibleService implements LLMService {
       maxTokens: 1024,
       hadImages: false,
     });
-    return parseSelectionPlan(response);
+    return parseSelectionPlanWithFallback(response, 'OpenAICompatible', metadata, clinicalHint, 20);
   }
 
   async analyzeSlices(
@@ -1000,7 +1029,7 @@ class OllamaService implements LLMService {
       system: buildSelectionSystemPrompt(),
       userContent: buildSelectionUserPrompt(metadata, clinicalHint, viewportContext),
     });
-    return parseSelectionPlan(response);
+    return parseSelectionPlanWithFallback(response, 'Ollama', metadata, clinicalHint, 20);
   }
 
   async analyzeSlices(

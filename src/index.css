@@ -11,6 +11,8 @@
 
 html, body, #root {
   height: 100%;
+  /* Mobile browsers: use dynamic viewport height so the URL bar doesn't clip the layout */
+  height: 100dvh;
   margin: 0;
   overflow: hidden;
 }

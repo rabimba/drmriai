@@ -115,6 +115,12 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
   const openAiBaseUrl = normalizeOpenAiCompatibleBaseUrl(config.openAiCompatibleBaseUrl);
   const openAiApiKey = config.openAiCompatibleApiKey?.trim() ?? '';
   const webGpuAvailable = hasTransformersWebGpuSupport();
+  // Gemma Browser downloads a multi-GB model and runs it on WebGPU — flag likely-undersized devices
+  const deviceMemoryGb = typeof navigator !== 'undefined'
+    ? (navigator as { deviceMemory?: number }).deviceMemory
+    : undefined;
+  const isMobileUa = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const lowMemoryDevice = (deviceMemoryGb != null && deviceMemoryGb < 8) || isMobileUa;
   const analysisDepth = getAnalysisDepth(config);
 
   // Close on outside click
@@ -368,6 +374,12 @@ export default function SettingsPanel({ open, onClose, config, onConfigChange }:
                 )}
                 <span className="text-neutral-500 ml-auto">Runs fully in the browser</span>
               </div>
+
+              {lowMemoryDevice && (
+                <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-[11px] leading-5 text-amber-200">
+                  This device appears to have limited memory or is mobile. Gemma Browser downloads a multi-GB model and may fail here — Ollama or Gemini is recommended on this device.
+                </div>
+              )}
 
               <div className="bg-neutral-900 rounded-lg px-3 py-3 space-y-2">
                 <p className="text-xs text-neutral-300">

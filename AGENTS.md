@@ -1,20 +1,24 @@
-# AGENTS.md — DICOMassist
+# AGENTS.md — Dr.MRI.AI
 
 ## Project Overview
 
-A web-based DICOM viewer with LLM chat integration. The core innovation is **smart slice filtering**: instead of dumping 400+ slices into an LLM, we intelligently select 10-20 relevant slices based on a clinical hint (what the doctor suspects), DICOM metadata, and a two-call LLM architecture.
+A web-based DICOM viewer with LLM chat integration. The core innovation is **smart slice filtering**: instead of dumping 400+ slices into an LLM, we intelligently select relevant slices based on a clinical hint (what the doctor suspects), DICOM metadata, and a two-call LLM architecture. Analysis depth (fast/standard/full) controls how far the seed plan is expanded. Reports can be exported alone or as an evidence bundle ZIP (report + manifest + reviewed JPEGs).
 
 This is a portfolio project. Public GitHub repo + demo video. Goal: showcase clinical product knowledge + technical engineering skills.
 
 ## Tech Stack
 
-- **Frontend**: React 18 + Vite + TypeScript
+- **Frontend**: React 19 + Vite + TypeScript
 - **Viewer**: Cornerstone3D v4 (`@cornerstonejs/core@^4`, `@cornerstonejs/tools@^4`, `@cornerstonejs/dicom-image-loader@^4`)
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS v4
 - **Icons**: lucide-react
-- **LLM**: Abstracted service layer (Codex API + Ollama, provider-agnostic interface)
-- **LLM API access**: Client-side calls with user-provided API key (runtime input, not bundled)
-- **Data**: Local DICOM files only (drag-and-drop), no backend
+- **LLM**: Abstracted service layer with 4 providers (provider-agnostic `LLMService` interface):
+  - **Gemini API** (hosted, e.g. gemini-2.5-flash, OpenAI-compatible endpoint)
+  - **OpenAI-compatible** (any /v1 chat-completions endpoint, optional local CORS proxy `npm run openai-proxy`)
+  - **Ollama** (split text/vision models, local)
+  - **Gemma Browser** (Transformers.js + WebGPU, fully in-browser, model downloaded to browser cache)
+- **LLM API access**: Client-side calls with user-provided API key (runtime input, stored in localStorage, not bundled)
+- **Data**: Local DICOM files only (drag-and-drop / file picker), no backend. Sample knee MRI bundled under `public/sample-data/`
 
 ## Vite Configuration (Critical)
 
@@ -45,15 +49,15 @@ export default defineConfig({
 ## Project Structure
 
 ```
-DICOMassist/
+Dr.MRI.AI/
 ├── src/
 │   ├── viewer/              # Cornerstone3D setup, viewports, toolbar
 │   │   ├── CornerstoneInit.ts       # One-time init of core + tools + imageLoader
-│   │   ├── ViewportGrid.tsx          # Viewport layout (stack + MPR + grid)
+│   │   ├── ViewportGrid.tsx          # Viewport layout (stack + MPR + grid), SliceSlider
 │   │   ├── viewportUtils.ts          # Shared viewport info extraction helpers
 │   │   ├── EmptyViewportOverlay.tsx  # Series picker for empty grid slots
-│   │   ├── Toolbar.tsx               # Tool buttons (W/L, Zoom, Pan, Scroll, Length, etc.)
-│   │   ├── DicomDropZone.tsx         # Drag-and-drop file loading
+│   │   ├── Toolbar.tsx               # Tool buttons (W/L, Zoom, Pan, Length, layouts, etc.)
+│   │   ├── DicomDropZone.tsx         # Drag-and-drop + file picker + sample-data loading
 │   │   └── LoadingOverlay.tsx        # Prefetch progress indicator
 │   ├── dicom/               # Metadata extraction and parsing
 │   │   ├── MetadataExtractor.ts      # Extract DICOM tags, group by series, compute fields
@@ -61,26 +65,34 @@ DICOMassist/
 │   │   └── types.ts                  # DICOM metadata type definitions
 │   ├── filtering/           # Slice selection logic
 │   │   ├── SliceSelector.ts          # Apply LLM selection plan to actual slices
-│   │   ├── SliceExporter.ts          # Convert selected slices to JPEG for LLM
+│   │   ├── SliceExporter.ts          # Windowed DICOM → JPEG (MONOCHROME1/RGB aware)
 │   │   └── types.ts                  # SelectedSlice type
 │   ├── llm/                 # LLM integration (provider-agnostic)
-│   │   ├── LLMServiceFactory.ts      # Codex + Ollama service implementations
+│   │   ├── LLMServiceFactory.ts      # Gemini + OpenAI-compatible + Ollama + Gemma services
 │   │   ├── PromptBuilder.ts          # Constructs prompts from metadata + hint
 │   │   ├── useLLMChat.ts             # React hook: pipeline orchestration + state
+│   │   ├── analysisDepth.ts          # Fast/Standard/Full coverage policies per provider
+│   │   ├── anatomyChecklists.ts      # Body-part detection + guided survey structures
+│   │   ├── GemmaTransformersRuntime.ts  # Transformers.js WebGPU session + generation
+│   │   ├── gemmaTransformersConfig.ts   # Gemma Browser defaults + WebGPU detection
+│   │   ├── ollamaConfig.ts           # Ollama URL normalization + mixed-content guard
 │   │   └── types.ts                  # LLMService interface, SelectionPlan, ChatMessage
 │   ├── ui/                  # App-level UI components
-│   │   ├── SpotlightPrompt.tsx       # Cmd+K / Ctrl+K overlay prompt input
-│   │   ├── ChatSidebar.tsx           # Collapsible sidebar with chat history
+│   │   ├── LandingScreen.tsx         # Marketing/landing page with upload zone
+│   │   ├── DisclaimerModal.tsx       # Research-use disclaimer gate
+│   │   ├── ChatSidebar.tsx           # Analysis console: launchpad, chat, exports
 │   │   ├── PipelineView.tsx          # Pipeline step visualization
-│   │   ├── PlanPreviewCard.tsx       # Selection plan summary card
+│   │   ├── PlanPreviewCard.tsx       # Editable selection plan + depth picker
 │   │   ├── AssistantMessage.tsx      # Formatted LLM response with interactive slice refs
 │   │   ├── SeriesBrowser.tsx         # Series list for grid slot selection
 │   │   ├── MetadataPanel.tsx         # Shows extracted DICOM metadata summary
-│   │   └── SettingsPanel.tsx         # LLM provider configuration (Codex/Ollama)
+│   │   └── SettingsPanel.tsx         # LLM provider configuration (all 4 providers)
 │   ├── utils/
+│   │   ├── sampleDataLoader.ts       # Downloads + unzips bundled sample knee MRI
 │   │   └── logger.ts                 # Dev-gated console logging
 │   ├── App.tsx
 │   └── main.tsx
+├── public/sample-data/      # Bundled sample knee MRI zip (~32MB)
 ├── screenshots/             # Screenshots for README
 ├── AGENTS.md
 ├── README.md
@@ -99,23 +111,24 @@ This is the single end-to-end workflow the MVP must support:
 5. Viewer displays the primary axial series with standard tools
    - Primary series = axial series with the most slices (tie-break: lowest series number)
    - Axial detection uses Image Orientation Patient direction cosines, NOT series description
-6. User hits Cmd+K → Spotlight-style prompt overlay appears
+6. User hits Cmd+K → chat sidebar opens and its prompt input is focused
 7. User types clinical hint: "Patient with hepatitis C history, evaluate for HCC"
 8. FIRST LLM CALL (text-only, cheap):
    - Input: metadata summary + clinical hint
    - Output: structured SelectionPlan (which series, slice range, window/level, sampling)
-9. App applies the plan:
-   - Viewer scrolls to relevant slice range
-   - Window/level adjusts to recommended values
-   - Selected slices exported as JPEG (resized to ≤1568px long edge)
-10. SECOND LLM CALL (multimodal):
+   - If the LLM returns invalid JSON, a metadata heuristic fallback plan is used (all providers)
+9. Plan preview card appears (editable: series, range, count, W/L, depth) — user confirms or cancels
+10. App applies the plan:
+    - Viewer scrolls to relevant slice range
+    - Window/level adjusts to recommended values
+    - Selected slices exported as JPEG (resized to ≤1568px long edge)
+11. SECOND LLM CALL (multimodal, batched when image count exceeds provider batch size):
     - Input: selected JPEG images + metadata context + clinical hint
     - Output: clinical analysis text
-11. Response appears in chat sidebar
-12. User can ask follow-up questions (conversation continues in sidebar)
-    - Follow-ups are text-only: full conversation history sent as context, no new images
-    - Covers "elaborate on finding #2", "differential diagnosis?", etc.
-    - For a fresh analysis with different slices/series, user opens Cmd+K again (new two-call cycle)
+12. Response appears in chat sidebar; slice references are clickable and navigate the viewer
+13. User can ask follow-up questions (conversation continues in sidebar)
+    - Follow-ups are text-only: bounded conversation history sent as context, no new images
+    - For a fresh analysis with different slices/series, user starts a new two-call cycle
 ```
 
 ## Cornerstone3D Implementation Notes
@@ -330,21 +343,37 @@ interface StudyMetadata {
 
 // --- LLM Types (src/llm/types.ts) ---
 
-interface SelectionPlan {
-  targetSeries: string;           // Series Number as string, e.g., "3" (NOT Series UID)
-  sliceRange: [number, number];   // Inclusive instance number range [start, end]
+interface SeriesSelection {
+  seriesNumber: string;         // Series Number as string, e.g., "3" (NOT Series UID)
+  role: 'primary' | 'supplementary';
+  rationale: string;
+  sliceRange: [number, number]; // Inclusive instance number range [start, end]
   samplingStrategy: 'every_nth' | 'uniform' | 'all';
-  samplingParam?: number;         // Required for every_nth and uniform, ignored for all
+  samplingParam?: number;       // Required for every_nth and uniform, ignored for all
   windowCenter: number;
   windowWidth: number;
+}
+
+interface SelectionPlan {
   reasoning: string;              // LLM explains why these selections
+  selections: SeriesSelection[];  // 1 primary + 0-2 supplementary series
+  totalImages: number;
+  analysisDepth?: AnalysisDepth;  // 'fast' | 'standard' | 'full'
+  // Legacy shortcuts mirroring selections[0] — used by App.tsx viewport logic:
+  targetSeries: string;
+  sliceRange: [number, number];
+  windowCenter: number;
+  windowWidth: number;
+  samplingStrategy: 'every_nth' | 'uniform' | 'all';
+  samplingParam?: number;
 }
 
 // samplingStrategy semantics:
 //   'every_nth' — samplingParam = N, take every Nth slice (e.g., 5 → slices 1,6,11,16...)
 //   'uniform'   — samplingParam = N, pick exactly N slices evenly spaced across the range
-//   'all'       — take every slice in the range (use when range is already ≤20 slices)
-// Hard guardrail: if result exceeds 20 slices after sampling, re-sample uniformly to 20.
+//   'all'       — take every slice in the range
+// Hard guardrail (fixSelectionPlan in useLLMChat.ts): clamp ranges to metadata,
+// sanitize window/level, drop localizer series, cap total ≤20 (seed) or depth budget.
 
 interface ChatMessage {
   id: string;
@@ -353,14 +382,24 @@ interface ChatMessage {
   timestamp: number;
 }
 
-type ProviderType = 'Codex' | 'ollama';
+type ProviderType = 'gemini' | 'ollama' | 'openai-compatible' | 'gemma-transformers';
 
 interface ProviderConfig {
   provider: ProviderType;
-  apiKey?: string;                // Codex only
+  apiKey?: string;                // Gemini only
+  geminiModel?: string;           // Gemini hosted model
   ollamaTextModel?: string;      // Ollama model for Call 1 (text-only planning)
   ollamaVisionModel?: string;    // Ollama model for Call 2 (multimodal analysis)
   ollamaUrl?: string;            // Ollama base URL override
+  openAiCompatibleBaseUrl?: string;   // OpenAI-compatible /v1 endpoint
+  openAiCompatibleApiKey?: string;
+  openAiCompatibleTextModel?: string;
+  openAiCompatibleVisionModel?: string;
+  analysisDepth?: AnalysisDepth;  // default coverage depth
+  gemmaTransformersModelId?: string;  // Gemma Browser model repo id
+  gemmaTransformersDtype?: string;    // e.g. q4f16
+  gemmaTransformersMaxImages?: number;
+  gemmaTransformersImageTokenBudget?: number;
 }
 
 interface ViewportContext {
@@ -394,26 +433,30 @@ interface LLMService {
 - Purpose: "elaborate on finding #2", differential diagnosis, etc.
 
 ### LLM Providers
-Both providers implement the same `LLMService` interface in `LLMServiceFactory.ts`:
+All providers implement the same `LLMService` interface in `LLMServiceFactory.ts`:
 
-**Codex API** — Uses `Codex-sonnet-4-20250514` for both calls. API key entered at runtime, stored in localStorage.
+**Gemini API** — Hosted, e.g. `gemini-2.5-flash`, via Google's OpenAI-compatible endpoint. API key entered at runtime, stored in localStorage.
 
-**Ollama** — Supports split text/vision models (e.g., `alibayram/medgemma:4b` for Call 1, `llava:7b` for Call 2). Runs locally, no API key needed. Requires `OLLAMA_ORIGINS=*` for CORS.
+**OpenAI-compatible** — Any `/v1` chat-completions endpoint (LM Studio, vLLM, hosted routers). Separate text/vision model selection; capability inferred from model metadata. `npm run openai-proxy` runs a local CORS proxy helper.
+
+**Ollama** — Split text/vision models (e.g., `alibayram/medgemma:4b` for Call 1, `gemma4:latest` for Call 2). Runs locally, no API key. Requires `OLLAMA_ORIGINS=*` for CORS.
+
+**Gemma Browser** — Transformers.js + WebGPU, `onnx-community/gemma-4-E2B-it-ONNX` fully in-browser. No server. Bounded image budget + tensor-limit retry logic. Full coverage depth unavailable.
+
+All providers fall back to a metadata heuristic selection plan when Call 1 returns invalid JSON.
 
 ### Image Preparation for LLM
-- Convert selected DICOM slices to JPEG using canvas
+- Convert selected DICOM slices to JPEG using canvas (OffscreenCanvas with DOM fallback)
 - Apply the recommended window/level BEFORE export (LLM sees what a radiologist would see)
-- Resize to max 1568px on the long edge (optimal for Codex, avoids auto-resize latency)
-- Target 10-20 images per request
-- Base64 encode for API transmission
+- MONOCHROME1 (inverted grayscale) and RGB color pixel data handled explicitly
+- Resize to max 1568px on the long edge (768px for Gemma Browser)
+- Target 10-20 images per request; batched with a synthesis pass when over the provider batch size
+- Base64 encode (chunked) for API transmission
 
-### Codex API Constraints (reference for ClaudeService)
-- Max 100 images per API request
-- ≤20 images: max 8000x8000px each
-- >20 images: max 2000x2000px each
-- ~1,600 tokens per image at optimal size
-- 5MB per image, 32MB total request size
-- Supported formats: JPEG, PNG, GIF, WebP
+### Hosted API Constraints (reference)
+- Keep batches ≤24 images per request; JPEG ≤1568px long edge
+- Full coverage depth on hosted providers is capped at 120 images (cost/runtime bound)
+- 300s request timeout on all providers
 
 ### Prompt Construction
 PromptBuilder constructs system and user prompts. Key principles:
@@ -442,33 +485,20 @@ PromptBuilder constructs system and user prompts. Key principles:
 │ Status: Series info | Slice 45/187 | W:400 C:40         │
 └─────────────────────────────────────────────────────────┘
 
-Spotlight Prompt (Cmd+K / Ctrl+K overlay, centered):
-┌─────────────────────────────────────────────────┐
-│ 🔍 Patient with hepatitis C, evaluate for HCC  │
-│    ▌                                            │
-└─────────────────────────────────────────────────┘
-```
-
-### Spotlight Prompt (Cmd+K / Ctrl+K)
-- Floating overlay centered on screen, above everything
-- Text input with placeholder: "Describe clinical context or what to look for..."
-- Enter to submit, Escape to dismiss
-- Shows loading state during LLM calls
-- After submission, result goes to chat sidebar which auto-opens
-
-### Chat Sidebar
-- Collapsible panel on the right
-- Toggle with **Cmd+B** (Mac) / **Ctrl+B** (Windows/Linux), or toggle button
-- Conversation history: user prompts + LLM responses
-- Responses rendered as formatted markdown
-- Follow-up input at bottom of sidebar (text-only, no new image analysis)
+### Analysis Console (chat sidebar)
+- The prompt input lives at the bottom of the chat sidebar (no separate overlay)
+- Cmd+K / Ctrl+K opens the sidebar and focuses the input
+- Analysis launchpad (empty state): free-text prompt vs. guided survey mode with per-structure checklist
+- Conversation history: user prompts + LLM responses rendered as formatted markdown
+- Interactive slice references in responses navigate the viewer
+- Plan preview card (editable) gates image analysis; Escape cancels a pending plan
+- Export: save analysis, download MD/JSON report, or evidence bundle ZIP
 
 ### Keyboard Shortcuts Summary
 | Shortcut | Action |
 |---|---|
-| Cmd+K / Ctrl+K | Open spotlight prompt |
-| Cmd+B / Ctrl+B | Toggle chat sidebar |
-| Escape | Dismiss spotlight / close sidebar |
+| Cmd+K / Ctrl+K | Open chat sidebar + focus prompt |
+| Escape | Cancel pending plan / close settings |
 
 ### Metadata Panel
 - Collapsible accordion section at the **top of the sidebar**, above chat history
@@ -495,15 +525,15 @@ Spotlight Prompt (Cmd+K / Ctrl+K overlay, centered):
 
 ### Phase 3: LLM Integration
 - [x] LLMService interface
-- [x] Codex + Ollama: Call 1 (text-only selection plan)
+- [x] Gemini + OpenAI-compatible + Ollama + Gemma Browser: Call 1 (text-only selection plan)
 - [x] PromptBuilder for metadata + hint
 - [x] SliceSelector: apply SelectionPlan to image data
 - [x] SliceExporter: DICOM → windowed JPEG conversion
-- [x] Codex + Ollama: Call 2 (multimodal analysis)
-- [x] Provider config: runtime settings UI (Codex API key + Ollama model config)
+- [x] Call 2 (multimodal analysis) across all providers, with batching + synthesis
+- [x] Provider config: runtime settings UI (all 4 providers)
 
 ### Phase 4: UI Integration
-- [x] Spotlight prompt component (Cmd+K)
+- [x] Chat sidebar prompt input (Cmd+K focuses it)
 - [x] Chat sidebar component with pipeline visualization
 - [x] Wire up full flow: prompt → Call 1 → viewer adjust → Call 2 → chat
 - [x] Viewer auto-scrolls to selected range
@@ -511,7 +541,6 @@ Spotlight Prompt (Cmd+K / Ctrl+K overlay, centered):
 - [x] Loading states and error handling
 - [x] Interactive slice references in LLM responses
 - [x] Follow-up conversation support
-
 ### Phase 5: Polish
 - [x] README with architecture diagram, screenshots, setup instructions
 - [x] Sample DICOM data download instructions
@@ -521,7 +550,9 @@ Spotlight Prompt (Cmd+K / Ctrl+K overlay, centered):
 
 ## Sample DICOM Data
 
-For testing and demo, use LDCT-and-Projection-Data from TCIA:
+A sample anonymized knee MRI is bundled at `public/sample-data/sample-knee-mri.zip` (~32MB) and loadable via the "Try Sample Knee MRI" button (`src/utils/sampleDataLoader.ts` downloads + unzips it client-side).
+
+For additional testing, use LDCT-and-Projection-Data from TCIA:
 - URL: https://www.cancerimagingarchive.net/collection/ldct-and-projection-data/
 - Contains: head, chest, abdomen CT scans with clinical annotations
 - Has: real pathology findings confirmed by biopsy/follow-up

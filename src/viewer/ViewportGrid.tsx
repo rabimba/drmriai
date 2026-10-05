@@ -164,16 +164,16 @@ function SliceSlider({ current, total, onChange }: {
   return (
     <div
       ref={trackRef}
-      className="w-5 shrink-0 flex items-center justify-center bg-neutral-900 cursor-pointer select-none"
+      className="w-8 shrink-0 flex items-center justify-center bg-neutral-900 cursor-pointer select-none touch-none"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <div className="relative w-1 h-full rounded-full bg-neutral-700">
+      <div className="relative w-1.5 h-full rounded-full bg-neutral-700">
         <div
-          className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-blue-500 shadow"
-          style={{ top: `calc(${pct}% - 6px)` }}
+          className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-blue-500 shadow"
+          style={{ top: `calc(${pct}% - 8px)` }}
         />
       </div>
     </div>

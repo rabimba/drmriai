@@ -181,7 +181,7 @@ export default function Toolbar({
     }`;
 
   return (
-    <div className="relative z-20 flex items-center gap-1 px-3 py-2 overflow-x-auto whitespace-nowrap">
+    <div className="relative z-20 flex items-center gap-1 px-3 py-2 overflow-x-auto whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)]">
       {/* Series browser toggle — far left */}
       {onToggleSeriesBrowser && (
         <>
